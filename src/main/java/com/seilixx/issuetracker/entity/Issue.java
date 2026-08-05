@@ -30,9 +30,8 @@ private String description;
 @JoinColumn(name = "creator_id")
     private User creator;
 
-@ManyToOne
-@JoinColumn(name = "assignee_id")
-    private User assignee;
+@OneToMany(mappedBy = "issueAssigned")
+    private List<User> assignees;
 
 @OneToMany(mappedBy = "issue")
     List<Comment> comments;

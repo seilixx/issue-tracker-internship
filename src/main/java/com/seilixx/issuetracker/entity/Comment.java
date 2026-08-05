@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Entity
 @Data
-public class Comment {
+public class Comment  {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
