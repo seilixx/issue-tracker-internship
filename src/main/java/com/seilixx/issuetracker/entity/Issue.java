@@ -3,6 +3,10 @@ package com.seilixx.issuetracker.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import java.time.LocalDateTime;
+
 import java.util.List;
 
 @Entity
@@ -22,6 +26,14 @@ private String description;
 @Enumerated(EnumType.STRING)
     private Priority priority;
 
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    private LocalDateTime closedAt;
+
 @ManyToOne
 @JoinColumn(name = "project_id")
     private Project project;
@@ -30,9 +42,14 @@ private String description;
 @JoinColumn(name = "creator_id")
     private User creator;
 
-@OneToMany(mappedBy = "issueAssigned")
+    @ManyToMany
+    @JoinTable(
+            name = "issue_assignees",
+            joinColumns = @JoinColumn(name = "issue_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
     private List<User> assignees;
 
-@OneToMany(mappedBy = "issue")
+@OneToMany(mappedBy = "issue", cascade = CascadeType.ALL , orphanRemoval = true)
     List<Comment> comments;
 }

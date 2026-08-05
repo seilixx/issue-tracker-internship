@@ -29,9 +29,8 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "creator")
     private List<Issue> issuesCreated;
 
-    @ManyToOne
-    @JoinColumn(name = "issue_assignee")
-    private Issue issueAssigned;
+    @ManyToMany(mappedBy = "assignees")
+    private List<Issue> assignedIssues;
 
     @OneToMany(mappedBy = "user")
     private List<Comment> comments;

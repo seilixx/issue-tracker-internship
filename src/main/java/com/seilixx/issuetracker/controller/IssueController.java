@@ -36,4 +36,21 @@ public class IssueController {
         return ResponseEntity.status(201).body(response);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<GenericType<IssueDto>> updateIssue(
+            @PathVariable Long id,
+            @RequestBody IssueDto issueDto) {
+        IssueDto updated = issueService.updateIssue(id, issueDto);
+        GenericType<IssueDto> response = new GenericType<>(true, "Issue updated", updated);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<GenericType<Void>> deleteIssue(@PathVariable Long id) {
+        issueService.deleteIssue(id);
+        GenericType<Void> response = new GenericType<>(true, "Issue deleted", null);
+        return ResponseEntity.ok(response);
+    }
 }
+
+

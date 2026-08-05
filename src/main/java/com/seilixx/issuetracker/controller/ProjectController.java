@@ -6,10 +6,7 @@ import com.seilixx.issuetracker.dto.ProjectDto;
 import com.seilixx.issuetracker.service.IssueService;
 import com.seilixx.issuetracker.service.ProjectService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -25,12 +22,37 @@ public class ProjectController {
     @GetMapping
     public ResponseEntity<GenericType<List<ProjectDto>>> getProjects() {
         List<ProjectDto> projects = projectService.getProjects();
-        GenericType<List<ProjectDto>> response = new GenericType<>(true,"here is the project list",projects);
+        GenericType<List<ProjectDto>> response = new GenericType<>(true, "here is the project list", projects);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
-    public ProjectDto getProject(@PathVariable long id){
-        return projectService.getProjectById(id);
+    public ResponseEntity<GenericType<ProjectDto>> getProject(@PathVariable Long id) {
+        ProjectDto projectDto = projectService.getProjectById(id);
+        GenericType<ProjectDto> response = new GenericType<>(true,"Here is the project",projectDto);
+        return ResponseEntity.ok(response);
+
+    }
+
+    @PostMapping
+    public ResponseEntity<GenericType<ProjectDto>> createProject(@RequestBody ProjectDto projectDto) {
+        ProjectDto projectCreated = projectService.createProject(projectDto);
+        GenericType<ProjectDto> response = new GenericType<>(true, "here is the project created", projectCreated);
+        return ResponseEntity.status(201).body(response);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<GenericType<ProjectDto>> updateProject(@PathVariable Long id, @RequestBody ProjectDto projectDto) {
+        ProjectDto projectUpdated = projectService.updateProject(id, projectDto);
+        GenericType<ProjectDto> response = new GenericType<>(true, "here is the project updated", projectUpdated);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<GenericType<Void>> deleteProject(@PathVariable Long id) {
+         projectService.deleteProject(id);
+         GenericType<Void> response = new GenericType<>(true,"Project deleted",null);
+         return ResponseEntity.ok(response);
     }
 }
+
