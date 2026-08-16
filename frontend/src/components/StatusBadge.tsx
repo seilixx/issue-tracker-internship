@@ -1,16 +1,23 @@
-import { Status } from '../types';
+import type { Status } from '@/utils/apiTypes'
+import styles from './StatusBadge.module.css'
 
-interface StatusBadgeProps {
-  status: Status;
+const STATUS_META: Record<Status, { label: string; tokenVar: string }> = {
+  OPEN: { label: 'Open', tokenVar: '--color-status-open' },
+  IN_PROGRESS: { label: 'In Progress', tokenVar: '--color-status-in-progress' },
+  DONE: { label: 'Closed', tokenVar: '--color-status-done' },
 }
 
-const statusConfig: Record<Status, { label: string; className: string }> = {
-  [Status.OPEN]: { label: 'Open', className: 'badge-open' },
-  [Status.IN_PROGRESS]: { label: 'In Progress', className: 'badge-in-progress' },
-  [Status.DONE]: { label: 'Done', className: 'badge-done' },
-};
+interface StatusBadgeProps {
+  status: Status
+  className?: string
+}
 
-export default function StatusBadge({ status }: StatusBadgeProps) {
-  const config = statusConfig[status] || { label: status, className: '' };
-  return <span className={`badge ${config.className}`}>{config.label}</span>;
+export function StatusBadge({ status, className }: StatusBadgeProps) {
+  const meta = STATUS_META[status]
+  return (
+    <span className={className ? `${styles.badge} ${className}` : styles.badge}>
+      <span className={styles.dot} style={{ backgroundColor: `var(${meta.tokenVar})` }} aria-hidden="true" />
+      {meta.label}
+    </span>
+  )
 }

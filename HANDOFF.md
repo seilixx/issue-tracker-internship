@@ -2,7 +2,7 @@
 
 Dernière mise à jour : 2026-08-16, session Claude Code.
 Repo : `https://github.com/seilixx/issue-tracker-internship.git` (privé)
-Branche courante : **`beta`** (poussée, commit `fdcdfc6`)
+Branche courante : **`beta`**
 Spec de référence : `docs/Issue_Tracker_Phase2_Spec.docx` (9 features backend + brief frontend)
 
 Ce fichier sert à reprendre le travail dans une autre session Claude Code sans
@@ -13,14 +13,15 @@ perdre le contexte. Donne-le à lire en premier avant de continuer.
 ## 1. État global
 
 Backend Java 17+/Spring Boot 4.1.0/Spring Data JPA/PostgreSQL dans `backend/`.
-Frontend React (Vite+TS+Tailwind) scaffoldé dans `frontend/` mais **pas touché
-cette session** (hors scope, focus 100% backend).
+Frontend React 19 + Vite + TypeScript (pas de Tailwind, CSS Modules + design
+tokens maison) dans `frontend/`, reconstruit de zéro cette session en suivant
+le sprint 3 du spec.
 
-Features du spec Phase 2 implémentées, dans cet ordre :
+Features du spec Phase 2 :
 
 | # | Feature | Statut |
 |---|---|---|
-| — | Réparation compilation cassée (AuthenticationService supprimé du disque, RegisterRequest/Role désynchronisés) | ✅ fait |
+| — | Réparation compilation cassée | ✅ fait |
 | 2 | Rôles admin/manager/user + `@PreAuthorize` | ✅ fait |
 | 3 | Catégorie + leader de projet | ✅ fait |
 | 7 | Fermeture d'issue (closed_by/closed_at, statut terminal) | ✅ fait |
@@ -28,173 +29,157 @@ Features du spec Phase 2 implémentées, dans cet ordre :
 | 4 | Commentaires en thread (parent_comment_id, soft-delete) | ✅ fait |
 | 5 | Profil utilisateur + recherche (paginés) | ✅ fait |
 | 6 | Tri + pagination sur la liste d'issues | ✅ fait |
-| 8 | Vue détail complète (attachments + N+1) | 🟡 **code fait, vérif runtime DB restante — voir §3** |
-| 9 | Visibilité vs permission d'écriture | ✅ fait (audit + 2 failles corrigées, voir §3bis) |
-| 10 | Édition de profil + avatar | ⬜ pas fait |
-| — | Frontend (sprint 3 du spec) | ⬜ pas touché |
+| 8 | Vue détail complète (attachments + N+1) | ✅ fait côté code — vérif runtime anti-`MultipleBagFetchException` jamais faite contre une vraie DB (voir §5) |
+| 9 | Visibilité vs permission d'écriture | ✅ fait (audit complet + 2 failles corrigées) |
+| 10 | Édition de profil + avatar | ✅ fait cette session (backend + frontend) |
+| — | Frontend (sprint 3 du spec) | ✅ fait : design tokens/thème, layout shell, board+liste, panneau de détail, profil/édition/recherche, passe de polish |
 
-Aucune migration Flyway/Liquibase dans le projet — le schéma est géré par
-`ddl-auto=update` en dev, `validate` en prod (voir §5, point important).
+Aucune migration Flyway/Liquibase — le schéma est géré par `ddl-auto=update`
+en dev, `validate` en prod (voir §6).
+
+**Le point le plus important pour la suite** : il n'y a **aucune authentification
+réelle** côté frontend (pas de login/JWT). Toute l'app tourne contre un
+`CURRENT_USER` simulé en dur (`frontend/src/features/users/currentUser.ts`,
+uuid `current-user-mock-uuid`, rôle `USER`). C'est la feature qui débloquerait
+le plus de choses si une session future s'y attaque : connecter le vrai flux
+JWT existant côté backend (`AuthenticationController`/`JwtService`, déjà
+fonctionnels) au frontend, remplacer `CURRENT_USER` par le principal
+réellement authentifié, et faire suivre `apiClient.ts` (le token
+`issuetracker-auth-token` en localStorage est déjà prévu comme placeholder).
 
 ---
 
-## 2. Conventions établies (à respecter si tu continues)
+## 2. Conventions établies côté backend
 
 - **Package-by-layer** : `entity`, `repository`, `service`, `controller`, `dto`, `security`, `exception`.
 - **DTOs** : classes Lombok `@Data`, jamais de `record`. Validation via `@NotBlank`/`@NotNull` + `@Valid` dans les controllers.
 - **Réponses** : toujours enveloppées dans `GenericType<T>{success, message, data}`.
-- **Pagination** : wrapper maison `PagedResponse<T>{content, page, size, totalElements, totalPages}` (pas `Page<T>` de Spring directement, pour éviter les soucis de sérialisation).
-- **Séparation update DTO / permission** : quand un champ d'un endpoint d'édition générale doit avoir une permission plus stricte que le reste (catégorie de projet, statut d'issue), on **retire le champ du DTO d'update général** et on ajoute un endpoint PATCH dédié avec sa propre règle. Voir `ProjectUpdateRequest` (pas de `category`) + `PATCH /api/projects/{id}/category` (admin-only), et `IssueUpdateRequest` (pas de `status`) + `PATCH /api/issues/{id}/status`.
-- **Sécurité par ownership** : beans `@Component("xxxSecurity")` (`IssueSecurity`, `AttachmentSecurity`) exposant des méthodes `isCreatorOrAssignee(Long id, Authentication auth)` / `isUploader(...)`, référencées dans `@PreAuthorize("hasAnyRole('ADMIN','MANAGER') or @issueSecurity.isCreatorOrAssignee(#id, authentication)")`. `#id` fonctionne directement (le projet compile avec `-parameters`, vérifié empiriquement — pas besoin de `@P`).
-- **GlobalExceptionHandler** (`backend/src/main/java/com/seilixx/issuetracker/exception/GlobalExceptionHandler.java`) — mapping actuel :
-  - `ResourceNotFoundException` → 404
-  - `AccessDeniedException` → 403
-  - `IssueClosedException` → 409
-  - `MaxUploadSizeExceededException` → 413
-  - `RuntimeException` (générique) → 400
-  - `MethodArgumentNotValidException` → 400
-  - `Exception` (catch-all) → 500
-- **Chaque service mappe ses propres DTOs** — pas d'appel service→service. Ça duplique un peu le mapping `Comment→CommentDto` entre `CommentService`, `IssueService` et `UserService`, mais c'est le pattern déjà en place, on l'a suivi plutôt que d'introduire un nouveau pattern.
+- **Pagination** : wrapper maison `PagedResponse<T>{content, page, size, totalElements, totalPages}`.
+- **Séparation update DTO / permission** : un champ qui a besoin d'une permission plus stricte que le reste d'un endpoint d'édition générale sort du DTO général et passe par un PATCH dédié. Exemples : `ProjectUpdateRequest` (pas de `category`) + `PATCH /api/projects/{id}/category` (admin-only) ; `IssueUpdateRequest` (pas de `status`) + `PATCH /api/issues/{id}/status`.
+- **Sécurité par ownership** : beans `@Component("xxxSecurity")` (`IssueSecurity`, `AttachmentSecurity`, `CommentSecurity`) référencés dans `@PreAuthorize("hasAnyRole('ADMIN','MANAGER') or @xxxSecurity.method(#id, authentication)")`. `#id` fonctionne directement (compile avec `-parameters`).
+- **Deux périmètres de permission distincts sur les issues** (feature 9) :
+  - `IssueSecurity.isCreatorOrAssignee` (reporter/assigné/manager/admin) → commenter, changer le statut.
+  - `IssueSecurity.isCreatorOrAssigneeOrProjectLeader` (+ leader du projet) → éditer les champs de l'issue, attacher un fichier.
+- **Avatars** : même pattern que les attachments — on ne stocke jamais d'URL publique en dur, seulement `avatarStoragePath`/`avatarContentType` sur `User`, et `UserDto.avatarUrl` est **calculé** dynamiquement (`/api/users/{uuid}/avatar` si un avatar existe, sinon `null`). Réutilise `FileStorageService` (upload) mais avec un allowlist image-only et un cap de taille propres (3MB), séparés de l'allowlist générale des attachments.
+- **GlobalExceptionHandler** — mapping : `ResourceNotFoundException`→404, `AccessDeniedException`→403, `IssueClosedException`→409, `MaxUploadSizeExceededException`→413, `MethodArgumentNotValidException`→400, `RuntimeException`→400, `Exception`→500.
+- **Chaque service mappe ses propres DTOs** — pas d'appel service→service (duplication assumée, pattern déjà en place).
 
-### Pièges Spring Boot 4.1.0 découverts cette session
-- Les artifact-id `spring-boot-starter-webmvc` (au lieu de `-web`) et `spring-boot-starter-data-jpa-test`/`spring-boot-starter-webmvc-test` sont **corrects** en Boot 4 (renommage officiel) — ne pas les "corriger" vers les noms Boot 3.
-- `@WebMvcTest` a bougé vers `org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest`.
-- `@MockBean` est remplacé par `@MockitoBean` (`org.springframework.test.context.bean.override.mockito.MockitoBean`). Pour un bean nommé (`@Component("issueSecurity")`), il faut **explicitement** `@MockitoBean(name = "issueSecurity")` sinon Spring Security ne résout pas `@issueSecurity` dans le SpEL de `@PreAuthorize` (`NoSuchBeanDefinitionException` au runtime, pas à la compilation).
+### Pièges Spring Boot 4.1.0
+- `spring-boot-starter-webmvc` (pas `-web`), `spring-boot-starter-data-jpa-test`/`spring-boot-starter-webmvc-test` : noms **corrects** en Boot 4.
+- `@WebMvcTest` → `org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest`.
+- `@MockBean` → `@MockitoBean`. Pour un bean nommé, il faut **explicitement** `@MockitoBean(name = "issueSecurity")` sinon `@PreAuthorize` ne résout pas le SpEL au runtime (pas d'erreur à la compilation).
 
 ---
 
-## 3. Feature 8 — code fait, vérification runtime DB restante (à faire en premier)
+## 3. Feature 10 — Édition de profil + avatar (backend, ajouté cette session)
 
-Objectif : `GET /api/issues/{id}` doit retourner en un seul appel logique
-(peu de requêtes SQL) : champs, projet, reporter, assigné, priorité, statut,
-closed_by/closed_at, **attachments**, et commentaires en thread.
+Le backend n'avait **rien** pour cette feature avant cette session (pas de
+`avatarUrl`/`bio` sur `User`, pas d'endpoint `/me`). Ajouté :
 
-**Fait cette session (pas encore committé)** :
-- `IssueDto` a un champ `attachments: List<AttachmentDto>` (`backend/src/main/java/com/seilixx/issuetracker/dto/IssueDto.java`).
-- `IssueRepository.findDetailById(Long id)` — requête avec `LEFT JOIN FETCH` sur `project`, `creator`, `closedBy`, `assignees` (une seule collection jointe pour éviter `MultipleBagFetchException`).
-- `CommentRepository.findDetailByIssueId(Long issueId)` — `LEFT JOIN FETCH authorUser, parentComment`, triée par id.
-- `AttachmentRepository.findDetailByIssueId(Long issueId)` — `LEFT JOIN FETCH uploadedBy`, triée par id.
-- `IssueService.java` : `CommentRepository` et `AttachmentRepository` injectés au constructeur.
-- `IssueService.getIssueById(Long id)` réécrit : `issueRepository.findDetailById(id)` + `commentRepository.findDetailByIssueId(id)` + `attachmentRepository.findDetailByIssueId(id)` (3 requêtes au lieu d'1 base + N lazy loads).
-- Helper privé `mapCommentToDto(Comment comment, long issueId)` extrait du lambda précédemment dupliqué dans `mapToDto` — réutilisé par l'ancien `mapToDto` (list/create/update) et par le nouveau chemin détail.
-- Helper privé `mapAttachmentToDto(Attachment attachment, long issueId)` ajouté (mêmes champs que `AttachmentService.mapToDto`, dupliqué ici volontairement — convention du projet).
-- `getIssues()`/`getIssuesByFilters()`/`createIssue()`/`updateIssue()`/`updateStatus()` **non touchés** — ils gardent l'ancien `mapToDto` léger (sans attachments), l'optimisation N+1 ne concerne que `GET /api/issues/{id}`.
-- `./mvnw -q compile` et `./mvnw -q test-compile` : OK.
-- `./mvnw -q test -Dtest=IssueServiceTest,IssueStatusControllerTest,IssueSecurityTest` : OK (les 3 passent).
-
-**Reste à faire** :
-1. **Vérification runtime anti-`MultipleBagFetchException`** — pas faite cette session car Postgres local n'était pas disponible dans l'environnement (pas de service Windows, pas de docker détecté). Méthode prévue (voir session précédente) : test `@SpringBootTest` jetable qui autowire `IssueRepository` et appelle `findDetailById` sur une issue de la DB dev, en lisant le SQL généré dans les logs (`show-sql: true` déjà actif en dev). Supprimer le test après vérification.
-2. Une fois Postgres up, relancer toute la suite de tests (voir §4), y compris `IssueTrackerApplicationTests`.
-3. Committer les changements (rien n'a été commit cette session, voir `git status`).
+- `User` : `bio`, `avatarStoragePath`, `avatarContentType` (tous nullable, pas de backfill nécessaire).
+- `UserDto` : `bio` + `avatarUrl` (calculé, voir §2).
+- `UpdateProfileRequest{firstName, lastName, bio}` — username **non éditable** via cet endpoint (choix de scope, pas demandé).
+- `GET /api/users/me`, `PATCH /api/users/me`, `POST /api/users/me/avatar` (multipart, champ `file`, image uniquement, 3MB max), `GET /api/users/{uuid}/avatar` (stream, pas de restriction au-delà de `authenticated()`, cohérent avec la règle de lecture ouverte de la feature 9).
+- `UserService` : `getMyProfile`/`updateMyProfile`/`updateMyAvatar`/`downloadAvatar`, toutes résolvent l'utilisateur courant via `SecurityContextHolder` (même pattern que le reste du code), pas de paramètre uuid — impossible d'éditer le profil de quelqu'un d'autre par construction.
 
 ---
 
-## 3bis. Feature 9 — Visibilité vs permission d'écriture (audit terminé)
+## 4. Frontend — architecture et points d'attention
 
-Audit endpoint par endpoint de tous les contrôleurs (`IssueController`,
-`CommentController`, `AttachmentController`, `ProjectController`, `UserController`).
+Structure (`frontend/src/`) : `components/` (UI partagée : `EmptyState`, `Skeleton`,
+`StatusBadge`, `PriorityIcon`, `AvatarChip`/`AvatarStack`, `ThemeToggle`, icônes,
+`layout/` pour `AppShell`/`Sidebar`/`Topbar`/`UserMenu`), `features/{issues,projects,users}/`
+(chacune avec `api.ts`, `types.ts`, `hooks/`, `components/`), `providers/` (thème),
+`routes/router.tsx`, `utils/` (`apiClient`, `apiTypes`, `format`).
 
-**Lecture (GET/list)** : confirmé ouvert à tout utilisateur authentifié, peu
-importe le projet ou l'assignation — aucun de ces endpoints n'a de
-`@PreAuthorize` restrictif : `GET /api/issues`, `GET /api/issues/{id}`,
-`GET /api/projects`, `GET /api/projects/{id}`, `GET /api/comments*`,
-`GET /api/issues/{id}/attachments`, `GET /api/attachments/{id}/content`,
-`GET /api/users/{uuid}`, `GET /api/users/{uuid}/profile`, `GET /api/users/search`.
-`SecurityConfig` exige `authenticated()` sur tout `/api/**`, donc c'est déjà le
-comportement réel. Exception volontaire hors périmètre de la feature 9 :
-`GET /api/users` (liste complète) reste admin-only, c'est la feature 5,
-pas une question de visibilité d'issue.
+Points à connaître avant de continuer :
 
-**Deux failles trouvées et corrigées** (pas committées) :
+- **Permissions calculées côté client** (`features/issues/permissions.ts`) —
+  reproduit fidèlement les règles backend de la feature 9, évaluées contre
+  `CURRENT_USER` (voir §1). Le backend reste la seule source de vérité ; les
+  actions mutantes gèrent un 403/409 en repli (rollback optimiste sur le
+  board, bannière d'erreur sur le panneau de détail).
+- **Filtre catégorie sur les issues** : le backend n'accepte pas de paramètre
+  `category` sur `GET /api/issues` (seulement sur `GET /api/projects`). Le
+  filtre "catégorie" du frontend réduit donc juste la liste déroulante
+  "projet" — un message explicite s'affiche quand catégorie est choisie sans
+  projet précis, pour ne pas laisser croire que ça filtre silencieusement.
+- **Pagination du profil** (`GET /users/{uuid}/profile`) : un seul couple
+  `page`/`size` s'applique aux deux listes (assignées/fermées) en même temps
+  côté backend — pas de pagination indépendante possible sans changer
+  l'endpoint. Le frontend affiche un pager partagé, limitation assumée.
+- **Panneau de détail d'issue non réutilisable depuis la page profil** —
+  les issues listées sur `/profile/:uuid` ne sont pas cliquables (le panneau
+  de détail vit dans l'arbre de `IssuesView`, pas remonté plus haut). À faire
+  si un jour on veut ouvrir le détail depuis n'importe où : faire remonter
+  `openIssueId`/`IssueDetailPanel` au niveau `AppShell`.
+- **Cropper d'avatar fait maison** (`features/users/components/AvatarCropper.tsx`)
+  — Canvas natif, pas de dépendance externe (zoom + pan, export 320×320 en PNG).
+- **Design tokens** : tout dans `frontend/src/index.css` (`:root` = light,
+  `[data-theme='dark']` = dark). Thème résolu en `"light"`/`"dark"` explicite
+  avant le premier paint (script inline dans `index.html` + `ThemeProvider`),
+  persisté dans `localStorage` (`issuetracker-theme`), suit `prefers-color-scheme`
+  tant que l'utilisateur n'a pas fait de choix explicite.
+- **Alias `@/`** → `frontend/src/` (configuré dans `vite.config.ts` + `tsconfig.app.json`).
 
-1. **`PUT /api/comments/{id}` et `DELETE /api/comments/{id}` n'avaient
-   strictement aucune vérification** au-delà de `authenticated()` — n'importe
-   quel utilisateur connecté pouvait modifier ou supprimer le commentaire de
-   n'importe qui. Ajout de `security/CommentSecurity.java` (bean
-   `commentSecurity`, méthode `isAuthor(Long commentId, Authentication)`,
-   même pattern que `AttachmentSecurity.isUploader`) + `@PreAuthorize("hasAnyRole('ADMIN','MANAGER')
-   or @commentSecurity.isAuthor(#id, authentication)")` sur les deux endpoints.
-   Décision de scope (pas explicitée dans le spec pour l'édition/suppression
-   d'un commentaire existant, seulement pour sa création) : restreint à
-   l'auteur du commentaire + admin/manager, symétrique à ce qui existe déjà
-   pour les attachments.
+### Vérification de cette session
 
-2. **`IssueSecurity.isCreatorOrAssignee` ne connaissait pas le leader de
-   projet**, alors que le spec distingue deux périmètres différents :
-   - reporter/assigné/manager/admin → commenter, changer le statut
-     (`POST .../comments`, `PATCH .../status`) : **inchangé**, toujours
-     `isCreatorOrAssignee`.
-   - reporter/assigné/**leader du projet**/manager/admin → éditer les champs
-     de l'issue, réassigner, attacher un fichier (`PUT /api/issues/{id}`,
-     `POST /api/issues/{id}/attachments`) : nouvelle méthode
-     `isCreatorOrAssigneeOrProjectLeader` (même bean `issueSecurity`),
-     branchée sur ces deux endpoints.
+Le vrai backend Java ne peut pas tourner dans cet environnement (pas de
+Postgres, pas de docker/WSL disponibles). Toutes les features frontend ont
+été testées avec un **serveur mock jetable** (Node `http` natif, hors dépôt,
+reproduisant fidèlement le contrat `GenericType`/`PagedResponse`/DTOs) plutôt
+que non testées — mais ça reste une simulation, pas une vérification contre
+le vrai backend Spring. À refaire dès que Postgres est disponible.
 
-Endpoints mutants vérifiés et **laissés inchangés** (déjà corrects) :
-`POST /api/issues` (création libre, pas de restriction attendue),
-`DELETE /api/issues/{id}` (admin/manager), `DELETE /api/attachments/{id}`
-(admin/manager ou uploader — le spec ne mentionne pas le leader pour la
-suppression d'attachment, choix de ne pas étendre au-delà de ce qui est
-demandé), `POST/PUT/DELETE /api/projects/**` et
-`PATCH /api/users/{uuid}/role` (features 2/3, pas dans le périmètre issue
-de la feature 9).
+---
 
-**Tests ajoutés** (tous passent, pas de DB requise) :
-- `IssueSecurityTest` : 2 nouveaux cas pour `isCreatorOrAssigneeOrProjectLeader`
-  (leader autorisé, non-leader refusé).
-- `CommentSecurityTest` (nouveau, unit Mockito) : auteur autorisé / non-auteur refusé.
-- `CommentSecurityControllerTest` (nouveau, `@WebMvcTest`) : un user qui n'est
-  pas l'auteur reçoit un vrai 403 HTTP sur `PUT` et `DELETE /api/comments/{id}`.
+## 5. Comment vérifier que tout va bien
 
-**Reste à faire** : rien de bloquant, mais comme pour la feature 8, les
-changements de cette session ne sont pas committés (pas de `.git` dans ce
-répertoire, voir remarque de fin de session précédente).
-
-## 4. Comment vérifier que tout va bien
-
+Backend :
 ```bash
 cd backend
 ./mvnw -q compile
 ./mvnw -q test-compile
 ./mvnw -q test -Dtest=IssueServiceTest,IssueStatusControllerTest,IssueSecurityTest,CommentSecurityTest,CommentSecurityControllerTest,IssueTrackerApplicationTests
 ```
+- `IssueTrackerApplicationTests` nécessite Postgres local (`jdbc:postgresql://localhost:5432/issuetracker`, credentials dans `application-dev.yml`) — seul test de la liste qui ne passe pas dans cet environnement.
+- Vérification runtime anti-`MultipleBagFetchException` sur `IssueRepository.findDetailById` (feature 8) : jamais faite contre une vraie DB, voir §1.
 
-- `IssueSecurityTest` (unit, Mockito) — logique de `IssueSecurity.isCreatorOrAssignee`.
-- `IssueServiceTest` (unit, Mockito) — `updateStatus` refuse un changement sur une issue déjà `DONE`.
-- `IssueStatusControllerTest` (`@WebMvcTest`) — un user ni créateur ni assigné reçoit bien un 403 HTTP réel sur `PATCH /api/issues/{id}/status`.
-- `CommentSecurityTest` (unit, Mockito) — `CommentSecurity.isAuthor` (feature 9).
-- `CommentSecurityControllerTest` (`@WebMvcTest`) — un user qui n'est pas l'auteur reçoit un vrai 403 HTTP sur `PUT`/`DELETE /api/comments/{id}` (feature 9).
-- `IssueTrackerApplicationTests` — charge tout le contexte Spring **contre la vraie base Postgres locale** (`jdbc:postgresql://localhost:5432/issuetracker`, credentials dans `application-dev.yml`). Postgres doit tourner localement pour que ça passe.
+Frontend :
+```bash
+cd frontend
+npm ci          # si node_modules absent
+npx tsc -b       # type-check
+npx oxlint       # lint
+npm run build    # build de production (tsc -b && vite build)
+```
+Les trois passent proprement à la fin de cette session.
 
-## 5. État de la base Postgres locale (dev)
+## 6. État de la base Postgres locale (dev) — info d'une session précédente
 
-Cette session a dû réparer le schéma dev à la main parce que `ddl-auto=update`
-ne peut pas ajouter une colonne `NOT NULL` sur une table qui a déjà des lignes
-(Hibernate ne fait pas le backfill lui-même) :
-- `project.category` / `project.leader_id` — backfillés (`SOFTWARE`, user id 4) puis passés `NOT NULL`.
-- `comment.deleted` — backfillé à `false` puis passé `NOT NULL`.
+`ddl-auto=update` ne peut pas ajouter une colonne `NOT NULL` sur une table
+qui a déjà des lignes (pas de backfill automatique par Hibernate). Si ça
+se reproduit sur une DB existante : `ALTER TABLE ... ADD COLUMN` (nullable)
+→ `UPDATE ... SET ... WHERE ... IS NULL` (backfill) → `ALTER TABLE ... ALTER
+COLUMN ... SET NOT NULL`. Sur une DB fraîche (table vide), ce problème ne se
+pose pas. Les colonnes ajoutées cette session (`User.bio`/`avatarStoragePath`/
+`avatarContentType`) sont toutes nullable, donc pas concernées.
 
-**Si tu repars sur une autre machine / DB fraîche**, ce problème ne se
-posera pas (table vide au premier `ddl-auto=update`). Si tu retombes dessus
-sur CETTE base (colonnes déjà là mais nouvelle colonne `NOT NULL` ajoutée par
-une future feature), le pattern est : `ALTER TABLE ... ADD COLUMN ... ` (nullable)
-→ `UPDATE ... SET ... WHERE ... IS NULL` (backfill) → `ALTER TABLE ... ALTER COLUMN ... SET NOT NULL`.
+## 7. Points connus à traiter plus tard (pas bloquants)
 
-Pas de client `psql` disponible dans l'environnement — les vérifications/fix
-de cette session sont passés par un petit programme Java JDBC jetable
-(driver déjà en cache Maven : `~/.m2/repository/org/postgresql/postgresql/42.7.11/`).
+- **Pas d'authentification réelle côté frontend** — voir §1, le point le plus important.
+- **Secrets en clair** dans `application-dev.yml` (mot de passe DB, secret JWT par défaut) — préexistant. Repo privé donc pas urgent, mais à sortir en variables d'env avant tout merge/passage en public.
+- **Content-type des attachments/avatars** déclaré par le client, pas vérifié par inspection des octets (pas de Tika).
+- **Pas de vraie migration DB** (Flyway/Liquibase).
+- **Pas de redimensionnement d'avatar côté serveur** (le spec le mentionne comme optionnel — "if you want to keep payloads small") — le crop côté client suffit pour l'instant (sortie fixe 320×320).
+- **Recherche globale de la topbar** ne cherche que les utilisateurs (feature 5) — le placeholder dit "issues, projects, people" mais seule la recherche de personnes est branchée.
+- **Pas de bouton "créer une issue"** fonctionnel dans la topbar (juste affiché) — la création d'issue passe encore par l'API directement, pas de formulaire dédié construit.
 
-## 6. Points connus à traiter plus tard (pas bloquants)
-
-- **Secrets en clair** dans `backend/src/main/resources/application-dev.yml` (mot de passe DB, secret JWT par défaut) — préexistant, pas introduit cette session. Repo privé donc pas urgent, mais à sortir en variables d'env avant tout merge/passage en public.
-- **Content-type des attachments** déclaré par le client, pas vérifié par inspection des octets (pas de Tika). Acceptable pour l'instant (allowlist limitée), à durcir si les fichiers sont un jour servis inline dans un navigateur.
-- **Pas de vraie migration DB** (Flyway/Liquibase) — à introduire si le projet doit un jour supporter plusieurs environnements sans intervention manuelle comme au §5.
-- Feature 9 (visibilité vs permission d'écriture) n'a pas eu de passe dédiée — c'est déjà largement couvert par les `@PreAuthorize` posés au fil des features 2/7, mais personne n'a vérifié exhaustivement que chaque règle du tableau du spec (feature 9) est bien respectée endpoint par endpoint.
-
-## 7. Breaking changes introduits cette session (à répercuter côté frontend/tests manuels)
+## 8. Breaking changes backend introduits en cours de session (à répercuter côté tests manuels)
 
 - `GET /api/issues` retourne `GenericType<PagedResponse<IssueDto>>` au lieu de `GenericType<List<IssueDto>>`.
-- `POST /api/comments` (issueId dans le body) supprimé → remplacé par `POST /api/issues/{id}/comments` (`CommentCreateRequest`, sans issueId).
-- `PUT /api/issues/{id}` prend `IssueUpdateRequest` (sans `status` — passer par `PATCH /api/issues/{id}/status`).
-- `PUT /api/projects/{id}` prend `ProjectUpdateRequest` (sans `category` — passer par `PATCH /api/projects/{id}/category`).
-- `GET /api/users` (liste complète) est maintenant admin-only — utiliser `GET /api/users/search?q=` pour un picker côté frontend.
+- `POST /api/comments` (issueId dans le body) supprimé → remplacé par `POST /api/issues/{id}/comments`.
+- `PUT /api/issues/{id}` prend `IssueUpdateRequest` (sans `status`).
+- `PUT /api/projects/{id}` prend `ProjectUpdateRequest` (sans `category`).
+- `GET /api/users` (liste complète) est admin-only.
+- `UserDto` a deux nouveaux champs (`bio`, `avatarUrl`) — non-breaking (additions), mais à savoir si un client existant désérialise strictement.

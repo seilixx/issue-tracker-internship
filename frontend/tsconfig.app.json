@@ -15,10 +15,14 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Path aliases */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Linting */
     "strict": true,
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"]
 }
-

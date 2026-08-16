@@ -1,0 +1,120 @@
+.sidebar {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 64px;
+  padding: 0 var(--space-5);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  color: var(--color-accent);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.brandMark {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-accent);
+}
+
+.nav {
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.sectionTitleIcon {
+  flex-shrink: 0;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.link:hover {
+  background-color: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+
+.linkActive {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.linkIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.statusDot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.categoryGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.categoryLabel {
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+}
+
+.projectLink {
+  composes: link;
+  padding-left: var(--space-6);
+  font-weight: var(--font-weight-regular);
+}
+
+.projectDot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-border-strong);
+}
