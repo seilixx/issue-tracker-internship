@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/issuetracker}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:seilixx1514}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  jwt:
+    expiration: 3600000

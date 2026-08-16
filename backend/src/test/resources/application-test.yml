@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:15-alpine:///issuetracker_test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+jwt:
+  secret: VGhpcy1pcy1hLXNlY3JldC1rZXktdGhhdC1tdXN0LWJlLWF0LWxlYXN0LTI1Ni1iaXRzLWxvbmch
+  expiration: 3600000
