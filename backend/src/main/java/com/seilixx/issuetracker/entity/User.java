@@ -35,6 +35,13 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Role role = Role.USER;
 
+    private String bio;
+
+    // Same pattern as Attachment: never store a public URL directly, only the
+    // on-disk path + content type. UserDto computes the servable avatarUrl.
+    private String avatarStoragePath;
+    private String avatarContentType;
+
     @OneToMany(mappedBy = "creator")
     private List<Issue> issuesCreated;
 

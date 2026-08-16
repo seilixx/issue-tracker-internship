@@ -10,4 +10,6 @@ public class UserDto {
     private String lastName;
     private String username;
     private Role role;
+    private String bio;
+    private String avatarUrl;
 }

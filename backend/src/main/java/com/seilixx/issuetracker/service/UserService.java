@@ -3,6 +3,7 @@ package com.seilixx.issuetracker.service;
 import com.seilixx.issuetracker.dto.CommentDto;
 import com.seilixx.issuetracker.dto.IssueDto;
 import com.seilixx.issuetracker.dto.PagedResponse;
+import com.seilixx.issuetracker.dto.UpdateProfileRequest;
 import com.seilixx.issuetracker.dto.UserDto;
 import com.seilixx.issuetracker.dto.UserProfileDto;
 import com.seilixx.issuetracker.entity.Issue;
@@ -12,27 +13,40 @@ import com.seilixx.issuetracker.exception.ResourceNotFoundException;
 import com.seilixx.issuetracker.repository.IssueRepository;
 import com.seilixx.issuetracker.repository.ProjectRepository;
 import com.seilixx.issuetracker.repository.UserRepository;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class UserService {
+
+    private static final long MAX_AVATAR_SIZE_BYTES = 3L * 1024 * 1024;
+    private static final Set<String> ALLOWED_AVATAR_CONTENT_TYPES = Set.of("image/png", "image/jpeg", "image/gif", "image/webp");
+
     private final UserRepository userRepository;
     private final IssueRepository issueRepository;
     private final ProjectRepository projectRepository;
+    private final FileStorageService fileStorageService;
 
     public UserService(UserRepository userRepository, IssueRepository issueRepository,
-            ProjectRepository projectRepository) {
+            ProjectRepository projectRepository, FileStorageService fileStorageService) {
         this.userRepository = userRepository;
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
+        this.fileStorageService = fileStorageService;
+    }
+
+    private User currentUser() {
+        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
     public List<UserDto> getAllUsers() {
@@ -74,6 +88,60 @@ public class UserService {
         profile.setAssignedIssues(toPagedResponse(assignedPage));
         profile.setClosedIssues(toPagedResponse(closedPage));
         return profile;
+    }
+
+    public UserDto getMyProfile() {
+        return mapToDto(currentUser());
+    }
+
+    public UserDto updateMyProfile(UpdateProfileRequest request) {
+        User user = userRepository.findByUuid(currentUser().getUuid())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setBio(request.getBio());
+        userRepository.save(user);
+        return mapToDto(user);
+    }
+
+    public UserDto updateMyAvatar(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
+        if (!ALLOWED_AVATAR_CONTENT_TYPES.contains(file.getContentType())) {
+            throw new IllegalArgumentException("Avatars must be an image (png, jpeg, gif, or webp)");
+        }
+        if (file.getSize() > MAX_AVATAR_SIZE_BYTES) {
+            throw new IllegalArgumentException("Avatar exceeds the maximum allowed size (3MB)");
+        }
+
+        User user = userRepository.findByUuid(currentUser().getUuid())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        String previousStoragePath = user.getAvatarStoragePath();
+        String storagePath = fileStorageService.store(file);
+        user.setAvatarStoragePath(storagePath);
+        user.setAvatarContentType(file.getContentType());
+        userRepository.save(user);
+
+        if (previousStoragePath != null) {
+            fileStorageService.delete(previousStoragePath);
+        }
+
+        return mapToDto(user);
+    }
+
+    public AvatarContent downloadAvatar(String uuid) {
+        User user = userRepository.findByUuid(uuid)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (user.getAvatarStoragePath() == null) {
+            throw new ResourceNotFoundException("This user has no avatar");
+        }
+        Resource resource = fileStorageService.load(user.getAvatarStoragePath());
+        return new AvatarContent(resource, user.getAvatarContentType());
+    }
+
+    public record AvatarContent(Resource resource, String contentType) {
     }
 
     public PagedResponse<UserDto> searchUsers(String query, int page, int size) {
@@ -148,6 +216,10 @@ public class UserService {
         userDto.setLastName(user.getLastName());
         userDto.setUsername(user.getUsername());
         userDto.setRole(user.getRole());
+        userDto.setBio(user.getBio());
+        if (user.getAvatarStoragePath() != null) {
+            userDto.setAvatarUrl("/api/users/" + user.getUuid() + "/avatar");
+        }
         return userDto;
     }
 }

@@ -3,21 +3,26 @@ package com.seilixx.issuetracker.controller;
 
 import com.seilixx.issuetracker.dto.GenericType;
 import com.seilixx.issuetracker.dto.PagedResponse;
+import com.seilixx.issuetracker.dto.UpdateProfileRequest;
 import com.seilixx.issuetracker.dto.UpdateRoleRequest;
 import com.seilixx.issuetracker.dto.UserDto;
 import com.seilixx.issuetracker.dto.UserProfileDto;
 import com.seilixx.issuetracker.entity.User;
 import com.seilixx.issuetracker.service.UserService;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -42,6 +47,32 @@ public class UserController {
         UserDto user = userService.getUserByUuid(uuid);
         GenericType<UserDto> response = new GenericType<>(true , "user", user){};
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<GenericType<UserDto>> getMyProfile() {
+        UserDto user = userService.getMyProfile();
+        return ResponseEntity.ok(new GenericType<>(true, "Your profile", user));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<GenericType<UserDto>> updateMyProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        UserDto updated = userService.updateMyProfile(request);
+        return ResponseEntity.ok(new GenericType<>(true, "Profile updated", updated));
+    }
+
+    @PostMapping("/me/avatar")
+    public ResponseEntity<GenericType<UserDto>> updateMyAvatar(@RequestParam("file") MultipartFile file) {
+        UserDto updated = userService.updateMyAvatar(file);
+        return ResponseEntity.ok(new GenericType<>(true, "Avatar updated", updated));
+    }
+
+    @GetMapping("/{uuid}/avatar")
+    public ResponseEntity<Resource> getAvatar(@PathVariable String uuid) {
+        UserService.AvatarContent content = userService.downloadAvatar(uuid);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(content.contentType()))
+                .body(content.resource());
     }
 
     @PatchMapping("/{uuid}/role")
