@@ -57,7 +57,7 @@ public class IssueController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER') or @issueSecurity.isCreatorOrAssignee(#id, authentication)")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER') or @issueSecurity.isCreatorOrAssigneeOrProjectLeader(#id, authentication)")
     public ResponseEntity<GenericType<IssueDto>> updateIssue(
             @PathVariable Long id,
             @Valid @RequestBody IssueUpdateRequest issueUpdateRequest) {

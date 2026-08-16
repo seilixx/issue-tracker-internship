@@ -28,8 +28,8 @@ Features du spec Phase 2 implémentées, dans cet ordre :
 | 4 | Commentaires en thread (parent_comment_id, soft-delete) | ✅ fait |
 | 5 | Profil utilisateur + recherche (paginés) | ✅ fait |
 | 6 | Tri + pagination sur la liste d'issues | ✅ fait |
-| 8 | Vue détail complète (attachments + N+1) | 🟡 **en cours, voir §3** |
-| 9 | Visibilité vs permission d'écriture | ⬜ pas fait explicitement (déjà largement couvert en pratique par `@PreAuthorize`, mais pas d'audit dédié) |
+| 8 | Vue détail complète (attachments + N+1) | 🟡 **code fait, vérif runtime DB restante — voir §3** |
+| 9 | Visibilité vs permission d'écriture | ✅ fait (audit + 2 failles corrigées, voir §3bis) |
 | 10 | Édition de profil + avatar | ⬜ pas fait |
 | — | Frontend (sprint 3 du spec) | ⬜ pas touché |
 
@@ -63,30 +63,92 @@ Aucune migration Flyway/Liquibase dans le projet — le schéma est géré par
 
 ---
 
-## 3. Feature 8 — EN COURS, à terminer en premier
+## 3. Feature 8 — code fait, vérification runtime DB restante (à faire en premier)
 
 Objectif : `GET /api/issues/{id}` doit retourner en un seul appel logique
 (peu de requêtes SQL) : champs, projet, reporter, assigné, priorité, statut,
 closed_by/closed_at, **attachments**, et commentaires en thread.
 
-**Déjà fait** (committé sur `beta`) :
-- `IssueDto` a un nouveau champ `attachments: List<AttachmentDto>` (`backend/src/main/java/com/seilixx/issuetracker/dto/IssueDto.java`).
+**Fait cette session (pas encore committé)** :
+- `IssueDto` a un champ `attachments: List<AttachmentDto>` (`backend/src/main/java/com/seilixx/issuetracker/dto/IssueDto.java`).
 - `IssueRepository.findDetailById(Long id)` — requête avec `LEFT JOIN FETCH` sur `project`, `creator`, `closedBy`, `assignees` (une seule collection jointe pour éviter `MultipleBagFetchException`).
 - `CommentRepository.findDetailByIssueId(Long issueId)` — `LEFT JOIN FETCH authorUser, parentComment`, triée par id.
 - `AttachmentRepository.findDetailByIssueId(Long issueId)` — `LEFT JOIN FETCH uploadedBy`, triée par id.
-- `IssueService.java` a déjà les imports (`AttachmentDto`, `AttachmentRepository`, `CommentRepository`) mais **ces repos ne sont pas encore injectés ni utilisés**.
+- `IssueService.java` : `CommentRepository` et `AttachmentRepository` injectés au constructeur.
+- `IssueService.getIssueById(Long id)` réécrit : `issueRepository.findDetailById(id)` + `commentRepository.findDetailByIssueId(id)` + `attachmentRepository.findDetailByIssueId(id)` (3 requêtes au lieu d'1 base + N lazy loads).
+- Helper privé `mapCommentToDto(Comment comment, long issueId)` extrait du lambda précédemment dupliqué dans `mapToDto` — réutilisé par l'ancien `mapToDto` (list/create/update) et par le nouveau chemin détail.
+- Helper privé `mapAttachmentToDto(Attachment attachment, long issueId)` ajouté (mêmes champs que `AttachmentService.mapToDto`, dupliqué ici volontairement — convention du projet).
+- `getIssues()`/`getIssuesByFilters()`/`createIssue()`/`updateIssue()`/`updateStatus()` **non touchés** — ils gardent l'ancien `mapToDto` léger (sans attachments), l'optimisation N+1 ne concerne que `GET /api/issues/{id}`.
+- `./mvnw -q compile` et `./mvnw -q test-compile` : OK.
+- `./mvnw -q test -Dtest=IssueServiceTest,IssueStatusControllerTest,IssueSecurityTest` : OK (les 3 passent).
 
-**Reste à faire** (`backend/src/main/java/com/seilixx/issuetracker/service/IssueService.java`) :
-1. Ajouter `CommentRepository commentRepository` et `AttachmentRepository attachmentRepository` au constructeur.
-2. Réécrire `getIssueById(Long id)` pour appeler `issueRepository.findDetailById(id)` (au lieu de `findById`), puis `commentRepository.findDetailByIssueId(id)` et `attachmentRepository.findDetailByIssueId(id)` séparément (3 requêtes au lieu d'1 base + N lazy loads).
-3. Extraire un helper privé `mapCommentToDto(Comment comment, long issueId)` à partir du lambda déjà dupliqué dans `mapToDto` (le contenu exact est déjà écrit inline, juste à extraire) — le réutiliser à la fois dans l'ancien `mapToDto` (list/create/update) et dans le nouveau chemin détail.
-4. Ajouter un helper privé `mapAttachmentToDto(Attachment attachment, long issueId)` (mêmes champs que `AttachmentService.mapToDto`, dupliqué ici volontairement — convention du projet).
-5. Construire l'`IssueDto` du détail avec `dto.setAttachments(...)` en plus du reste.
-6. **Ne pas toucher** `getIssues()`/`getIssuesByFilters()`/`createIssue()`/`updateIssue()`/`updateStatus()` — ils gardent l'ancien `mapToDto` léger (sans attachments), l'optimisation N+1 ne concerne que `GET /api/issues/{id}` (c'est ce que demande le spec, pas les listes).
-7. Compiler (`./mvnw -q compile`), puis vérifier qu'il n'y a pas de `MultipleBagFetchException` au runtime — la méthode de vérification rapide utilisée cette session : un test `@SpringBootTest` jetable qui autowire `IssueRepository` et appelle `findDetailById` sur l'unique issue de la DB dev, en lisant le SQL généré dans les logs (`show-sql: true` déjà actif en dev). Supprimer le test après vérification (pas demandé par l'utilisateur comme livrable).
-8. Relancer la suite de tests existante (voir §4).
+**Reste à faire** :
+1. **Vérification runtime anti-`MultipleBagFetchException`** — pas faite cette session car Postgres local n'était pas disponible dans l'environnement (pas de service Windows, pas de docker détecté). Méthode prévue (voir session précédente) : test `@SpringBootTest` jetable qui autowire `IssueRepository` et appelle `findDetailById` sur une issue de la DB dev, en lisant le SQL généré dans les logs (`show-sql: true` déjà actif en dev). Supprimer le test après vérification.
+2. Une fois Postgres up, relancer toute la suite de tests (voir §4), y compris `IssueTrackerApplicationTests`.
+3. Committer les changements (rien n'a été commit cette session, voir `git status`).
 
 ---
+
+## 3bis. Feature 9 — Visibilité vs permission d'écriture (audit terminé)
+
+Audit endpoint par endpoint de tous les contrôleurs (`IssueController`,
+`CommentController`, `AttachmentController`, `ProjectController`, `UserController`).
+
+**Lecture (GET/list)** : confirmé ouvert à tout utilisateur authentifié, peu
+importe le projet ou l'assignation — aucun de ces endpoints n'a de
+`@PreAuthorize` restrictif : `GET /api/issues`, `GET /api/issues/{id}`,
+`GET /api/projects`, `GET /api/projects/{id}`, `GET /api/comments*`,
+`GET /api/issues/{id}/attachments`, `GET /api/attachments/{id}/content`,
+`GET /api/users/{uuid}`, `GET /api/users/{uuid}/profile`, `GET /api/users/search`.
+`SecurityConfig` exige `authenticated()` sur tout `/api/**`, donc c'est déjà le
+comportement réel. Exception volontaire hors périmètre de la feature 9 :
+`GET /api/users` (liste complète) reste admin-only, c'est la feature 5,
+pas une question de visibilité d'issue.
+
+**Deux failles trouvées et corrigées** (pas committées) :
+
+1. **`PUT /api/comments/{id}` et `DELETE /api/comments/{id}` n'avaient
+   strictement aucune vérification** au-delà de `authenticated()` — n'importe
+   quel utilisateur connecté pouvait modifier ou supprimer le commentaire de
+   n'importe qui. Ajout de `security/CommentSecurity.java` (bean
+   `commentSecurity`, méthode `isAuthor(Long commentId, Authentication)`,
+   même pattern que `AttachmentSecurity.isUploader`) + `@PreAuthorize("hasAnyRole('ADMIN','MANAGER')
+   or @commentSecurity.isAuthor(#id, authentication)")` sur les deux endpoints.
+   Décision de scope (pas explicitée dans le spec pour l'édition/suppression
+   d'un commentaire existant, seulement pour sa création) : restreint à
+   l'auteur du commentaire + admin/manager, symétrique à ce qui existe déjà
+   pour les attachments.
+
+2. **`IssueSecurity.isCreatorOrAssignee` ne connaissait pas le leader de
+   projet**, alors que le spec distingue deux périmètres différents :
+   - reporter/assigné/manager/admin → commenter, changer le statut
+     (`POST .../comments`, `PATCH .../status`) : **inchangé**, toujours
+     `isCreatorOrAssignee`.
+   - reporter/assigné/**leader du projet**/manager/admin → éditer les champs
+     de l'issue, réassigner, attacher un fichier (`PUT /api/issues/{id}`,
+     `POST /api/issues/{id}/attachments`) : nouvelle méthode
+     `isCreatorOrAssigneeOrProjectLeader` (même bean `issueSecurity`),
+     branchée sur ces deux endpoints.
+
+Endpoints mutants vérifiés et **laissés inchangés** (déjà corrects) :
+`POST /api/issues` (création libre, pas de restriction attendue),
+`DELETE /api/issues/{id}` (admin/manager), `DELETE /api/attachments/{id}`
+(admin/manager ou uploader — le spec ne mentionne pas le leader pour la
+suppression d'attachment, choix de ne pas étendre au-delà de ce qui est
+demandé), `POST/PUT/DELETE /api/projects/**` et
+`PATCH /api/users/{uuid}/role` (features 2/3, pas dans le périmètre issue
+de la feature 9).
+
+**Tests ajoutés** (tous passent, pas de DB requise) :
+- `IssueSecurityTest` : 2 nouveaux cas pour `isCreatorOrAssigneeOrProjectLeader`
+  (leader autorisé, non-leader refusé).
+- `CommentSecurityTest` (nouveau, unit Mockito) : auteur autorisé / non-auteur refusé.
+- `CommentSecurityControllerTest` (nouveau, `@WebMvcTest`) : un user qui n'est
+  pas l'auteur reçoit un vrai 403 HTTP sur `PUT` et `DELETE /api/comments/{id}`.
+
+**Reste à faire** : rien de bloquant, mais comme pour la feature 8, les
+changements de cette session ne sont pas committés (pas de `.git` dans ce
+répertoire, voir remarque de fin de session précédente).
 
 ## 4. Comment vérifier que tout va bien
 
@@ -94,12 +156,14 @@ closed_by/closed_at, **attachments**, et commentaires en thread.
 cd backend
 ./mvnw -q compile
 ./mvnw -q test-compile
-./mvnw -q test -Dtest=IssueServiceTest,IssueStatusControllerTest,IssueSecurityTest,IssueTrackerApplicationTests
+./mvnw -q test -Dtest=IssueServiceTest,IssueStatusControllerTest,IssueSecurityTest,CommentSecurityTest,CommentSecurityControllerTest,IssueTrackerApplicationTests
 ```
 
 - `IssueSecurityTest` (unit, Mockito) — logique de `IssueSecurity.isCreatorOrAssignee`.
 - `IssueServiceTest` (unit, Mockito) — `updateStatus` refuse un changement sur une issue déjà `DONE`.
 - `IssueStatusControllerTest` (`@WebMvcTest`) — un user ni créateur ni assigné reçoit bien un 403 HTTP réel sur `PATCH /api/issues/{id}/status`.
+- `CommentSecurityTest` (unit, Mockito) — `CommentSecurity.isAuthor` (feature 9).
+- `CommentSecurityControllerTest` (`@WebMvcTest`) — un user qui n'est pas l'auteur reçoit un vrai 403 HTTP sur `PUT`/`DELETE /api/comments/{id}` (feature 9).
 - `IssueTrackerApplicationTests` — charge tout le contexte Spring **contre la vraie base Postgres locale** (`jdbc:postgresql://localhost:5432/issuetracker`, credentials dans `application-dev.yml`). Postgres doit tourner localement pour que ça passe.
 
 ## 5. État de la base Postgres locale (dev)

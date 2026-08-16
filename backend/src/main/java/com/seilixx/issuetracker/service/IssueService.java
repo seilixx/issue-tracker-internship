@@ -39,13 +39,18 @@ public class IssueService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final CommentRepository commentRepository;
+    private final AttachmentRepository attachmentRepository;
 
     public IssueService(IssueRepository issueRepository, ProjectRepository projectRepository,
-            UserRepository userRepository, FileStorageService fileStorageService) {
+            UserRepository userRepository, FileStorageService fileStorageService,
+            CommentRepository commentRepository, AttachmentRepository attachmentRepository) {
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
+        this.commentRepository = commentRepository;
+        this.attachmentRepository = attachmentRepository;
     }
 
     public List<IssueDto> getIssues() {
@@ -54,9 +59,22 @@ public class IssueService {
     }
 
     public IssueDto getIssueById(Long id) {
-        Issue issue = issueRepository.findById(id)
+        Issue issue = issueRepository.findDetailById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found"));
-        return mapToDto(issue);
+
+        IssueDto dto = mapToDto(issue);
+
+        List<CommentDto> commentDtos = commentRepository.findDetailByIssueId(id).stream()
+                .map(comment -> mapCommentToDto(comment, id))
+                .collect(Collectors.toList());
+        dto.setComments(commentDtos);
+
+        List<AttachmentDto> attachmentDtos = attachmentRepository.findDetailByIssueId(id).stream()
+                .map(attachment -> mapAttachmentToDto(attachment, id))
+                .collect(Collectors.toList());
+        dto.setAttachments(attachmentDtos);
+
+        return dto;
     }
 
     public List<IssueDto> getIssueByProjectId(Long projectId) {
@@ -205,29 +223,46 @@ public class IssueService {
 
         if (issue.getComments() != null) {
             List<CommentDto> commentDtos = issue.getComments().stream()
-                    .map(comment -> {
-                        CommentDto commentDto = new CommentDto();
-                        commentDto.setId(comment.getId());
-                        commentDto.setIssueId(issue.getId());
-                        commentDto.setDeleted(comment.isDeleted());
-                        if (comment.isDeleted()) {
-                            commentDto.setContent("[comment deleted]");
-                        } else {
-                            commentDto.setTitle(comment.getTitle());
-                            commentDto.setContent(comment.getContent());
-                        }
-                        if (comment.getAuthorUser() != null) {
-                            commentDto.setAuthorUuid(comment.getAuthorUser().getUuid());
-                            commentDto.setAuthorUserName(comment.getAuthorUser().getUsername());
-                        }
-                        if (comment.getParentComment() != null) {
-                            commentDto.setParentCommentId(comment.getParentComment().getId());
-                        }
-                        return commentDto;
-                    }).collect(Collectors.toList());
+                    .map(comment -> mapCommentToDto(comment, issue.getId()))
+                    .collect(Collectors.toList());
             dto.setComments(commentDtos);
         }
 
+        return dto;
+    }
+
+    private CommentDto mapCommentToDto(Comment comment, long issueId) {
+        CommentDto commentDto = new CommentDto();
+        commentDto.setId(comment.getId());
+        commentDto.setIssueId(issueId);
+        commentDto.setDeleted(comment.isDeleted());
+        if (comment.isDeleted()) {
+            commentDto.setContent("[comment deleted]");
+        } else {
+            commentDto.setTitle(comment.getTitle());
+            commentDto.setContent(comment.getContent());
+        }
+        if (comment.getAuthorUser() != null) {
+            commentDto.setAuthorUuid(comment.getAuthorUser().getUuid());
+            commentDto.setAuthorUserName(comment.getAuthorUser().getUsername());
+        }
+        if (comment.getParentComment() != null) {
+            commentDto.setParentCommentId(comment.getParentComment().getId());
+        }
+        return commentDto;
+    }
+
+    private AttachmentDto mapAttachmentToDto(Attachment attachment, long issueId) {
+        AttachmentDto dto = new AttachmentDto();
+        dto.setId(attachment.getId());
+        dto.setIssueId(issueId);
+        dto.setFileName(attachment.getFileName());
+        dto.setContentType(attachment.getContentType());
+        dto.setSizeBytes(attachment.getSizeBytes());
+        dto.setUploadedAt(attachment.getUploadedAt());
+        if (attachment.getUploadedBy() != null) {
+            dto.setUploadedByUuid(attachment.getUploadedBy().getUuid());
+        }
         return dto;
     }
 }

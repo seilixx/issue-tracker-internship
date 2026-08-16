@@ -1,6 +1,7 @@
 package com.seilixx.issuetracker.security;
 
 import com.seilixx.issuetracker.entity.Issue;
+import com.seilixx.issuetracker.entity.Project;
 import com.seilixx.issuetracker.entity.User;
 import com.seilixx.issuetracker.repository.IssueRepository;
 import org.junit.jupiter.api.Test;
@@ -73,5 +74,42 @@ class IssueSecurityTest {
         when(authentication.getPrincipal()).thenReturn(creator);
 
         assertThat(issueSecurity.isCreatorOrAssignee(10L, authentication)).isTrue();
+    }
+
+    @Test
+    void projectLeaderCanActOnIssueViaBroaderCheckOnly() {
+        User leader = new User();
+        leader.setId(4L);
+
+        Project project = new Project();
+        project.setLeader(leader);
+
+        Issue issue = new Issue();
+        issue.setProject(project);
+
+        when(issueRepository.findById(10L)).thenReturn(Optional.of(issue));
+        when(authentication.getPrincipal()).thenReturn(leader);
+
+        assertThat(issueSecurity.isCreatorOrAssigneeOrProjectLeader(10L, authentication)).isTrue();
+        assertThat(issueSecurity.isCreatorOrAssignee(10L, authentication)).isFalse();
+    }
+
+    @Test
+    void outsiderCannotActOnIssueViaBroaderCheck() {
+        User leader = new User();
+        leader.setId(4L);
+        User outsider = new User();
+        outsider.setId(5L);
+
+        Project project = new Project();
+        project.setLeader(leader);
+
+        Issue issue = new Issue();
+        issue.setProject(project);
+
+        when(issueRepository.findById(10L)).thenReturn(Optional.of(issue));
+        when(authentication.getPrincipal()).thenReturn(outsider);
+
+        assertThat(issueSecurity.isCreatorOrAssigneeOrProjectLeader(10L, authentication)).isFalse();
     }
 }

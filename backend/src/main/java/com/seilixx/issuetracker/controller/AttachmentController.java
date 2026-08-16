@@ -24,7 +24,7 @@ public class AttachmentController {
     }
 
     @PostMapping("/api/issues/{id}/attachments")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER') or @issueSecurity.isCreatorOrAssignee(#id, authentication)")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER') or @issueSecurity.isCreatorOrAssigneeOrProjectLeader(#id, authentication)")
     public ResponseEntity<GenericType<AttachmentDto>> uploadAttachment(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) {

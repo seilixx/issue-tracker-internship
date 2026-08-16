@@ -54,6 +54,7 @@ public class CommentController {
     }
 
     @PutMapping("/api/comments/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER') or @commentSecurity.isAuthor(#id, authentication)")
     public ResponseEntity<GenericType<CommentDto>> updateComment(@PathVariable Long id, @Valid @RequestBody CommentDto dto) {
         CommentDto commentUpdated = commentService.updateComment(id, dto);
         GenericType<CommentDto> response =new GenericType<>(true, "Comment updated", commentUpdated);
@@ -61,6 +62,7 @@ public class CommentController {
     }
 
     @DeleteMapping("/api/comments/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER') or @commentSecurity.isAuthor(#id, authentication)")
     public ResponseEntity<GenericType<Void>> deleteComment(@PathVariable Long id) {
         commentService.deleteComment(id);
         GenericType<Void> response =new GenericType<>(true, "Comment deleted", null);
