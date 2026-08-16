@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: IssueTracker
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  servlet:
+    multipart:
+      max-file-size: ${ATTACHMENTS_MAX_SIZE:10MB}
+      max-request-size: ${ATTACHMENTS_MAX_SIZE:10MB}
+
+jwt:
+  secret: ${JWT_SECRET:VGhpcy1pcy1hLXNlY3JldC1rZXktdGhhdC1tdXN0LWJlLWF0LWxlYXN0LTI1Ni1iaXRzLWxvbmch}
+  expiration: ${JWT_EXPIRATION_MS:3600000}
+
+app:
+  attachments:
+    storage-dir: ${ATTACHMENTS_DIR:uploads}
+    allowed-content-types: ${ATTACHMENTS_ALLOWED_TYPES:image/png,image/jpeg,image/gif,application/pdf,text/plain,application/zip}
