@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/Skeleton'
 import { StatusBadge } from '@/components/StatusBadge'
 import { IconAlertTriangle, IconMessageCircle, IconPaperclip, IconX } from '@/components/icons'
 import { useUsersLookup } from '@/features/users/hooks/useUsersLookup'
-import { CURRENT_USER } from '@/features/users/currentUser'
+import { useAuth } from '@/features/auth/useAuth'
 import type { Project } from '@/features/projects/types'
 import { useIssueDetail } from '../hooks/useIssueDetail'
 import { computeIssuePermissions } from '../permissions'
@@ -25,6 +25,7 @@ interface IssueDetailPanelProps {
 const CLOSE_ANIMATION_MS = 200
 
 export function IssueDetailPanel({ issueId, projectsById, onClose }: IssueDetailPanelProps) {
+  const { user } = useAuth()
   const [visible, setVisible] = useState(false)
   const [closing, setClosing] = useState(false)
   // Keeps rendering the last-open issue's data while the close animation
@@ -73,7 +74,7 @@ export function IssueDetailPanel({ issueId, projectsById, onClose }: IssueDetail
   if (!visible) return null
 
   const project = issue ? projectsById.get(issue.projectId) : undefined
-  const permissions = issue ? computeIssuePermissions(issue, project, CURRENT_USER) : null
+  const permissions = issue && user ? computeIssuePermissions(issue, project, user) : null
 
   return (
     <>

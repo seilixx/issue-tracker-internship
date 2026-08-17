@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { IconChevronDown, IconLogOut, IconUserCircle } from '@/components/icons'
-import { CURRENT_USER } from '@/features/users/currentUser'
+import { useAuth } from '@/features/auth/useAuth'
 import { getInitials } from '@/utils/format'
 import styles from './UserMenu.module.css'
 
@@ -9,6 +9,7 @@ export function UserMenu() {
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
 
   useEffect(() => {
     if (!open) return
@@ -31,6 +32,10 @@ export function UserMenu() {
     }
   }, [open])
 
+  // UserMenu only ever renders inside ProtectedRoute (AppShell), so a real user is
+  // always present here by the time this mounts.
+  if (!user) return null
+
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
       <button
@@ -41,7 +46,7 @@ export function UserMenu() {
         onClick={() => setOpen((value) => !value)}
       >
         <span className={styles.avatar} aria-hidden="true">
-          {getInitials(CURRENT_USER.firstName, CURRENT_USER.lastName)}
+          {getInitials(user.firstName, user.lastName)}
         </span>
         <IconChevronDown size={14} className={open ? `${styles.chevron} ${styles.chevronOpen}` : styles.chevron} />
       </button>
@@ -50,9 +55,9 @@ export function UserMenu() {
         <div className={styles.menu} role="menu">
           <div className={styles.menuHeader}>
             <p className={styles.menuName}>
-              {CURRENT_USER.firstName} {CURRENT_USER.lastName}
+              {user.firstName} {user.lastName}
             </p>
-            <p className={styles.menuEmail}>@{CURRENT_USER.username}</p>
+            <p className={styles.menuEmail}>@{user.username}</p>
           </div>
           <button
             type="button"
@@ -60,13 +65,21 @@ export function UserMenu() {
             role="menuitem"
             onClick={() => {
               setOpen(false)
-              navigate(`/profile/${CURRENT_USER.uuid}`)
+              navigate(`/profile/${user.uuid}`)
             }}
           >
             <IconUserCircle size={16} />
             My profile
           </button>
-          <button type="button" className={styles.menuItem} role="menuitem">
+          <button
+            type="button"
+            className={styles.menuItem}
+            role="menuitem"
+            onClick={() => {
+              setOpen(false)
+              logout()
+            }}
+          >
             <IconLogOut size={16} />
             Log out
           </button>

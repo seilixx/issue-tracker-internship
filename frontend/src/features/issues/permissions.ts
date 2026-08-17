@@ -6,8 +6,8 @@ import type { AttachmentItem, Issue } from './types'
 // (feature 9) exactly, computed client-side so the UI can disable/hide
 // actions proactively. The backend is still the source of truth — every
 // mutating call here also handles a 403 from the server gracefully, since
-// there's no real auth yet (see features/users/currentUser.ts) and this is
-// necessarily a prediction, not a guarantee.
+// this is necessarily a prediction (made from the JWT-authenticated user),
+// not a guarantee.
 export interface IssuePermissions {
   canComment: boolean
   canChangeStatus: boolean

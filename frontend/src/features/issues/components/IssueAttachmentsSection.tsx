@@ -2,7 +2,7 @@ import { useRef, useState, type ChangeEvent } from 'react'
 import { IconPaperclip, IconTrash, IconUpload } from '@/components/icons'
 import { getErrorMessage } from '@/utils/apiClient'
 import { formatBytes, formatRelativeDate } from '@/utils/format'
-import { CURRENT_USER } from '@/features/users/currentUser'
+import { useAuth } from '@/features/auth/useAuth'
 import type { UserSummary } from '@/features/users/types'
 import { deleteAttachment, uploadAttachment } from '../api'
 import { canDeleteAttachment } from '../permissions'
@@ -27,6 +27,7 @@ export function IssueAttachmentsSection({
   restrictedReason,
   onChanged,
 }: IssueAttachmentsSectionProps) {
+  const { user } = useAuth()
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -72,7 +73,7 @@ export function IssueAttachmentsSection({
                   {formatRelativeDate(attachment.uploadedAt)}
                 </span>
               </div>
-              {canDeleteAttachment(attachment, CURRENT_USER) ? (
+              {user && canDeleteAttachment(attachment, user) ? (
                 <button
                   type="button"
                   className={styles.deleteButton}

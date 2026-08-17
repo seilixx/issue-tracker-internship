@@ -9,7 +9,7 @@ import { IconAlertTriangle } from '@/components/icons'
 import { formatRelativeDate, getInitials } from '@/utils/format'
 import type { Issue } from '@/features/issues/types'
 import type { PagedResponse } from '@/utils/apiTypes'
-import { CURRENT_USER } from './currentUser'
+import { useAuth } from '@/features/auth/useAuth'
 import { useUserProfile } from './hooks/useUserProfile'
 import styles from './ProfilePage.module.css'
 
@@ -43,9 +43,10 @@ function IssueSection({ title, page }: { title: string; page: PagedResponse<Issu
 
 export function ProfilePage() {
   const { uuid = '' } = useParams<{ uuid: string }>()
+  const { user: currentUser } = useAuth()
   const [page, setPage] = useState(0)
   const { profile, loading, error, refetch } = useUserProfile(uuid, page, PAGE_SIZE)
-  const isSelf = uuid === CURRENT_USER.uuid
+  const isSelf = uuid === currentUser?.uuid
 
   if (loading) {
     return (
