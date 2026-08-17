@@ -8,3 +8,9 @@
   flex: 1;
   min-height: 0;
 }
+
+.projectNotFound {
+  padding: var(--space-4) var(--space-5) 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}

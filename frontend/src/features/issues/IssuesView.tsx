@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useProjects } from '@/features/projects/hooks/useProjects'
+import { ProjectHeader } from '@/features/projects/components/ProjectHeader'
 import type { UserSummary } from '@/features/users/types'
 import type { Priority, ProjectCategory, Status } from '@/utils/apiTypes'
 import { IssueBoard } from './components/IssueBoard'
@@ -11,13 +12,18 @@ import styles from './IssuesView.module.css'
 
 const DEFAULT_SORT: IssueSort = { sortBy: 'createdAt', sortDir: 'desc' }
 
-export function IssuesView() {
-  const { projects, error: projectsError, refetch: refetchProjects } = useProjects()
+interface IssuesViewProps {
+  /** Pins the board/list to a single project (set when arriving via /projects/:projectId). */
+  initialProjectId?: number
+}
+
+export function IssuesView({ initialProjectId }: IssuesViewProps = {}) {
+  const { projects, loading: projectsLoading, error: projectsError, refetch: refetchProjects } = useProjects()
   const projectsById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects])
 
   const [viewMode, setViewMode] = useState<ViewMode>('board')
   const [category, setCategory] = useState<ProjectCategory | ''>('')
-  const [projectId, setProjectId] = useState<number | undefined>(undefined)
+  const [projectId, setProjectId] = useState<number | undefined>(initialProjectId)
   const [status, setStatus] = useState<Status | undefined>(undefined)
   const [priority, setPriority] = useState<Priority | undefined>(undefined)
   const [assignee, setAssignee] = useState<UserSummary | null>(null)
@@ -25,6 +31,15 @@ export function IssuesView() {
   const [page, setPage] = useState(0)
   const [size, setSize] = useState(10)
   const [openIssueId, setOpenIssueId] = useState<number | null>(null)
+
+  // Re-sync when navigating between two /projects/:id links without a full remount
+  // (react-router keeps this component mounted since the route element is the same).
+  useEffect(() => {
+    setProjectId(initialProjectId)
+    setPage(0)
+  }, [initialProjectId])
+
+  const pinnedProject = initialProjectId != null ? projectsById.get(initialProjectId) : undefined
 
   function handleCategoryChange(nextCategory: ProjectCategory | '') {
     setCategory(nextCategory)
@@ -58,6 +73,11 @@ export function IssuesView() {
 
   return (
     <div className={styles.wrapper}>
+      {initialProjectId != null && pinnedProject ? <ProjectHeader project={pinnedProject} /> : null}
+      {initialProjectId != null && !pinnedProject && !projectsLoading && !projectsError ? (
+        <p className={styles.projectNotFound}>Project not found.</p>
+      ) : null}
+
       <IssueFiltersBar
         viewMode={viewMode}
         onViewModeChange={setViewMode}

@@ -6,6 +6,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { IssuesView } from '@/features/issues/IssuesView'
+import { ProjectBoardPage } from '@/features/projects/ProjectBoardPage'
 import { ProfileEditPage } from '@/features/users/ProfileEditPage'
 import { ProfilePage } from '@/features/users/ProfilePage'
 import { UserSearchPage } from '@/features/users/UserSearchPage'
@@ -54,12 +55,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'projects/:projectId',
-                element: (
-                  <MainPlaceholder
-                    title="Project board"
-                    description="The board and list views land in the next step."
-                  />
-                ),
+                element: <ProjectBoardPage />,
               },
               {
                 path: 'profile/edit',
