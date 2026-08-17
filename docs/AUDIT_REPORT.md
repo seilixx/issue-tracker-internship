@@ -16,7 +16,7 @@ Trois constats dominaient à la production de ce rapport ; les deux premiers ont
 2. ~~**Un vrai bug de sécurité/robustesse a été trouvé dans le filtre JWT**~~ **CORRIGÉ.** Un token expiré ou malformé faisait planter `JwtAuthenticationFilter` avec une exception non interceptée ; il renvoie maintenant un 401 propre au format `GenericType` (voir §2, S1).
 3. **Le backend n'a jamais pu être démarré contre une vraie base Postgres dans cet environnement** (ni tout au long des sessions précédentes) — confirmé de nouveau ici (pas de service Postgres, pas de Docker). Le graphe de beans Spring se construit intégralement sans erreur ; l'échec survient uniquement à la connexion JDBC (attendu). La section 4 documente précisément ce qui a pu être vérifié malgré cette contrainte. **Toujours d'actualité.**
 
-> **Note de mise à jour (post-audit)** : les points 1 et 2 ci-dessus, ainsi que S1 (§2.3), ont été corrigés après la rédaction de ce rapport. Le reste du document est laissé tel quel pour préserver l'état des lieux original ; se référer aux annotations ~~barrées~~ pour les points résolus.
+> **Note de mise à jour (post-audit)** : les points 1 et 2 ci-dessus, ainsi que S1-S5 (§2.3), le manque de `createdAt` sur `Comment` (§1.2, feature 4), la sidebar déconnectée de l'API (§4.3) et le leader de projet jamais affiché (§1.2, feature 3), ont été corrigés après la rédaction de ce rapport. Le reste du document est laissé tel quel pour préserver l'état des lieux original ; se référer aux annotations ~~barrées~~ pour les points résolus. Voir `HANDOFF.md` §7 pour le résumé à jour du backlog restant.
 
 ---
 
@@ -94,10 +94,10 @@ Trois constats dominaient à la production de ce rapport ; les deux premiers ont
 | # | Sévérité | Fichier | Description |
 |---|---|---|---|
 | S1 | ~~Élevée~~ **CORRIGÉ** | `backend/.../security/JwtAuthenticationFilter.java` | ~~`jwtService.extractUsername(jwt)` est appelé sans `try/catch`...~~ Corrigé : le parsing est maintenant entouré d'un `try/catch` (`ExpiredJwtException`, `MalformedJwtException`/`SignatureException`, `JwtException`/`IllegalArgumentException` en repli) qui renvoie un 401 au même format `GenericType` que `GlobalExceptionHandler`, sans laisser l'exception planter le filtre. Testé par `JwtAuthenticationFilterTest` (token expiré → 401, token malformé → 401) — les deux passent contre le vrai filtre/la vraie `SecurityConfig`, pas un mock. |
-| S2 | **Moyenne** | `backend/.../service/CommentService.java:86-92` | `updateComment` ne vérifie jamais `comment.isDeleted()`. Un commentaire soft-supprimé (`deleted=true`, `title/content=null`) peut être ré-écrit via `PUT /api/comments/{id}` par son auteur (qui passe toujours `@commentSecurity.isAuthor` puisque `authorUser` n'est jamais effacé), contournant l'immuabilité voulue de la suppression. |
-| S3 | **Moyenne** | `backend/src/main/resources/application.properties` | Fichier de config **dupliqué et orphelin** contenant un mot de passe de base de données **en clair, codé en dur** (`spring.datasource.password=seilixx1514`), sans passer par une variable d'environnement — contrairement à `application-dev.yml`/`application-prod.yml` qui font ça correctement. Spring Boot charge ce fichier en plus des `.yml`, créant une source de configuration redondante et confuse. |
-| S4 | **Moyenne** | `backend/src/main/resources/application.yml:12` | `jwt.secret` a une valeur de secours **codée en dur** (`${JWT_SECRET:VGhpcy1pcy1hLXNlY3JldC1rZXktdGhhdC1tdXN0LWJlLWF0LWxlYXN0LTI1Ni1iaXRzLWxvbmch}`, un secret Base64 statique). Si la variable d'environnement `JWT_SECRET` n'est pas positionnée (y compris potentiellement en prod par erreur de config), l'app démarre quand même avec ce secret prévisible, sans échec explicite. |
-| S5 | **Faible** | `backend/.../service/FileStorageService.java:40`, `UserService.updateMyAvatar` | Le content-type d'un fichier (attachment ou avatar) est entièrement **déclaré par le client** (`MultipartFile.getContentType()`), jamais vérifié par inspection réelle des octets (pas de détection magic-number / Tika). Un fichier renommé avec un `Content-Type` mensonger passe l'allowlist. Comme ce content-type stocké est ensuite renvoyé tel quel par `GET /api/attachments/{id}/content` et `GET /api/users/{uuid}/avatar`, un contenu malveillant pourrait être servi avec un type MIME trompeur. Risque limité (pas de rendu HTML dans l'app elle-même) mais réel si le contenu est un jour consommé ailleurs. |
+| S2 | ~~Moyenne~~ **CORRIGÉ** | `backend/.../service/CommentService.java` | ~~`updateComment` ne vérifie jamais `comment.isDeleted()`...~~ Corrigé : `updateComment` vérifie `isDeleted()` en tout premier et lève `CommentDeletedException` (409, même pattern que `IssueClosedException`) au lieu de ré-écrire le commentaire. Testé par `CommentServiceTest`. |
+| S3 | ~~Moyenne~~ **CORRIGÉ** | ~~`backend/src/main/resources/application.properties`~~ | ~~Fichier de config dupliqué et orphelin avec un mot de passe DB en clair...~~ Corrigé : le fichier a été supprimé après vérification que chacune de ses clés était déjà couverte par `application.yml`/`application-dev.yml`/`application-prod.yml` (qui utilisent des variables d'env pour les credentials). |
+| S4 | ~~Moyenne~~ **CORRIGÉ** | `backend/src/main/resources/application.yml` | ~~`jwt.secret` a une valeur de secours codée en dur...~~ Corrigé : `jwt.secret: ${JWT_SECRET}` n'a plus de valeur de repli. Vérifié en conditions réelles : sans `JWT_SECRET` dans l'environnement, `mvn spring-boot:run` refuse de démarrer avec `PlaceholderResolutionException: Could not resolve placeholder 'JWT_SECRET'` ; avec `JWT_SECRET` positionné, le démarrage passe ce point et échoue au même endroit qu'avant (connexion Postgres, cf. §4) — aucune régression. |
+| S5 | ~~Faible~~ **CORRIGÉ** | `backend/.../service/FileStorageService.java`, `AttachmentService.java`, `UserService.updateMyAvatar` | ~~Le content-type d'un fichier est entièrement déclaré par le client...~~ Corrigé : `FileStorageService.detectContentType` sniffe le vrai type via Apache Tika (`tika-core`) en inspectant les octets réels du flux, ignorant le `Content-Type` déclaré et le nom de fichier. Appliqué aux attachments et à l'avatar ; le type détecté (pas le type déclaré) est celui stocké et resservi. Testé par `AttachmentServiceTest` (fichier aux octets GZip renommé `photo.png` avec `Content-Type: image/png` mensonger → upload rejeté). |
 
 ### 2.4 Points positifs à noter (déjà bien faits)
 
@@ -160,7 +160,7 @@ En conséquence :
 ### 4.3 Comportements inattendus notés pendant les tests
 
 - Le bouton "Create issue" de la topbar ne fait strictement rien au clic (pas de handler) — confirmé par inspection DOM (`onclick === null`).
-- La sidebar affiche une liste de projets **totalement statique**, indépendante de `GET /api/projects` — confirmé par lecture de `Sidebar.tsx` (tableau en dur) et par le fait que ses liens (`/projects/website-revamp`, etc.) mènent à une page stub ("Project board — the board and list views land in the next step") jamais implémentée, alors que la barre de filtres, elle, utilise bien les vraies données. Deux sources de vérité différentes pour "la liste des projets" au sein du même frontend.
+- ~~La sidebar affiche une liste de projets **totalement statique**, indépendante de `GET /api/projects`~~ — **CORRIGÉ** après cet audit : `Sidebar.tsx` utilise maintenant `useProjects()` (même source que la barre de filtres), et ses liens mènent à une vraie page de board filtrée par projet (`ProjectBoardPage.tsx`) avec le leader du projet affiché en en-tête, au lieu du stub cité ci-dessus.
 - Aucune erreur console inattendue rencontrée sur les parcours testables (les erreurs observées dans les logs de session provenaient toutes d'un historique de rechargement HMR antérieur, pas d'un état courant réel — vérifié en comparant avec des requêtes réseau fraîches, toutes en 200/201).
 
 ### 4.4 Recommandation pour lever le blocage Postgres
@@ -172,25 +172,26 @@ Le projet déclare déjà `testcontainers`/`testcontainers-postgresql` dans `pom
 ## Récapitulatif des points à traiter (par sévérité)
 
 **Bloquant / élevé**
-1. Aucune authentification frontend (login/register/protected routes) — §1
+1. ~~Aucune authentification frontend (login/register/protected routes)~~ **CORRIGÉ** — §1
 2. ~~`JwtAuthenticationFilter` plante sur un token expiré/malformé au lieu de renvoyer 401/403~~ **CORRIGÉ** — §2 (S1)
 
 **Moyen**
-3. `CommentService.updateComment` permet de ressusciter un commentaire supprimé — §2 (S2)
-4. `application.properties` orphelin avec mot de passe DB en clair — §2 (S3)
-5. Secret JWT avec valeur de repli codée en dur — §2 (S4)
-6. Content-type des uploads (attachments + avatar) jamais vérifié par les octets réels — §2 (S5)
-7. Sidebar déconnectée de la vraie liste de projets (deux sources de vérité) — §4.3
+3. ~~`CommentService.updateComment` permet de ressusciter un commentaire supprimé~~ **CORRIGÉ** — §2 (S2)
+4. ~~`application.properties` orphelin avec mot de passe DB en clair~~ **CORRIGÉ** (fichier supprimé) — §2 (S3)
+5. ~~Secret JWT avec valeur de repli codée en dur~~ **CORRIGÉ** (l'app refuse de démarrer sans `JWT_SECRET`) — §2 (S4)
+6. ~~Content-type des uploads (attachments + avatar) jamais vérifié par les octets réels~~ **CORRIGÉ** (détection Tika) — §2 (S5)
+7. ~~Sidebar déconnectée de la vraie liste de projets (deux sources de vérité)~~ **CORRIGÉ** — §4.3
 8. Pas de bouton "Create issue"/formulaire de création de projet/issue/réassignation fonctionnel — §1
 
 **Mineur**
 9. `assignedUuids` vide silencieusement ignoré sur `PUT /api/issues/{id}` (impossible de tout désassigner) — §1
 10. `DELETE /api/attachments/{id}` ne bloque pas sur issue fermée — §1/§2
-11. Pas de `createdAt` sur `Comment` — §1
-12. Leader de projet jamais affiché côté frontend — §1
-13. Code mort (méthodes de service/repository non appelées, `application.properties`) — §3.1
+11. ~~Pas de `createdAt` sur `Comment`~~ **CORRIGÉ** — §1
+12. ~~Leader de projet jamais affiché côté frontend~~ **CORRIGÉ** — §1
+13. Code mort (méthodes de service/repository non appelées) — §3.1
 14. Pas de système de migration DB versionné — §3
 15. Testcontainers déclaré mais inutilisé (occasion manquée pour lever le blocage Postgres) — §3.1/§4.4
+16. `application-dev.yml` a un mot de passe DB de repli en clair (`${DB_PASSWORD:seilixx1514}`) — pattern différent de S3 (fichier canonique de dev, pas dupliqué/orphelin) donc pas corrigé automatiquement avec S3 ; à statuer explicitement (acceptable en local, à bannir si ce fichier sert jamais de base pour un environnement partagé)
 
 ---
 
