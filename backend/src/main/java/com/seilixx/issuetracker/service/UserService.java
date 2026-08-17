@@ -108,11 +108,12 @@ public class UserService {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
-        if (!ALLOWED_AVATAR_CONTENT_TYPES.contains(file.getContentType())) {
-            throw new IllegalArgumentException("Avatars must be an image (png, jpeg, gif, or webp)");
-        }
         if (file.getSize() > MAX_AVATAR_SIZE_BYTES) {
             throw new IllegalArgumentException("Avatar exceeds the maximum allowed size (3MB)");
+        }
+        String detectedContentType = fileStorageService.detectContentType(file);
+        if (!ALLOWED_AVATAR_CONTENT_TYPES.contains(detectedContentType)) {
+            throw new IllegalArgumentException("Avatars must be an image (png, jpeg, gif, or webp)");
         }
 
         User user = userRepository.findByUuid(currentUser().getUuid())
@@ -121,7 +122,7 @@ public class UserService {
         String previousStoragePath = user.getAvatarStoragePath();
         String storagePath = fileStorageService.store(file);
         user.setAvatarStoragePath(storagePath);
-        user.setAvatarContentType(file.getContentType());
+        user.setAvatarContentType(detectedContentType);
         userRepository.save(user);
 
         if (previousStoragePath != null) {
@@ -188,6 +189,7 @@ public class UserService {
                         CommentDto commentDto = new CommentDto();
                         commentDto.setId(comment.getId());
                         commentDto.setIssueId(issue.getId());
+                        commentDto.setCreatedAt(comment.getCreatedAt());
                         commentDto.setDeleted(comment.isDeleted());
                         if (comment.isDeleted()) {
                             commentDto.setContent("[comment deleted]");

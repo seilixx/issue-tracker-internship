@@ -1,5 +1,6 @@
 package com.seilixx.issuetracker.service;
 
+import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,6 +24,7 @@ public class FileStorageService {
 
     private final Path storageDir;
     private final Set<String> allowedContentTypes;
+    private final Tika tika = new Tika();
 
     public FileStorageService(
             @Value("${app.attachments.storage-dir}") String storageDir,
@@ -39,6 +42,19 @@ public class FileStorageService {
 
     public boolean isContentTypeAllowed(String contentType) {
         return contentType != null && allowedContentTypes.contains(contentType);
+    }
+
+    /**
+     * Sniffs the real content type from the file's magic bytes (Apache Tika), ignoring
+     * whatever {@link MultipartFile#getContentType()} the client declared — that header is
+     * client-supplied and trivially spoofed (e.g. renaming an executable to "photo.png").
+     */
+    public String detectContentType(MultipartFile file) {
+        try (InputStream in = file.getInputStream()) {
+            return tika.detect(in);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to inspect file content", e);
+        }
     }
 
     /**

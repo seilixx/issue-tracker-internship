@@ -48,8 +48,9 @@ public class AttachmentService {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
-        if (!fileStorageService.isContentTypeAllowed(file.getContentType())) {
-            throw new IllegalArgumentException("Content type not allowed: " + file.getContentType());
+        String detectedContentType = fileStorageService.detectContentType(file);
+        if (!fileStorageService.isContentTypeAllowed(detectedContentType)) {
+            throw new IllegalArgumentException("Content type not allowed: " + detectedContentType);
         }
 
         String storagePath = fileStorageService.store(file);
@@ -58,7 +59,7 @@ public class AttachmentService {
         attachment.setIssue(issue);
         attachment.setFileName(file.getOriginalFilename());
         attachment.setStoragePath(storagePath);
-        attachment.setContentType(file.getContentType());
+        attachment.setContentType(detectedContentType);
         attachment.setSizeBytes(file.getSize());
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
