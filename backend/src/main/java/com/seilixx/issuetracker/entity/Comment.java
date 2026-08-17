@@ -3,6 +3,9 @@ package com.seilixx.issuetracker.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Data
@@ -27,5 +30,11 @@ public class Comment  {
 
     @Column(nullable = false)
     private boolean deleted = false;
+
+    // Nullable at the DB level (not just the Java default) so ddl-auto=update can add this
+    // column to an existing table with rows, same pattern as the feature 10 columns (see HANDOFF.md §6).
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
 
 }

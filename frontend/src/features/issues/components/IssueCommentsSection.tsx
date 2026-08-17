@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { IconCornerDownRight } from '@/components/icons'
 import type { UserSummary } from '@/features/users/types'
+import { formatRelativeDate } from '@/utils/format'
 import { CommentForm } from './CommentForm'
 import { RestrictedNote } from './RestrictedNote'
 import type { CommentThread } from '../types'
@@ -54,6 +55,9 @@ export function IssueCommentsSection({ issueId, comments, usersByUuid, canCommen
             >
               <div className={styles.commentHeader}>
                 <span className={styles.author}>{authorLabel}</span>
+                {comment.createdAt ? (
+                  <span className={styles.timestamp}>{formatRelativeDate(comment.createdAt)}</span>
+                ) : null}
                 {comment.parentCommentId != null ? (
                   <span className={styles.replyBadge}>
                     <IconCornerDownRight size={11} />

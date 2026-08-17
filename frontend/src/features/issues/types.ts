@@ -38,6 +38,7 @@ export interface CommentThread {
   issueId: number
   authorUuid: string | null
   authorUserName: string | null
+  createdAt: string | null
   parentCommentId: number | null
   deleted: boolean
 }

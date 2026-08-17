@@ -235,6 +235,7 @@ public class IssueService {
         CommentDto commentDto = new CommentDto();
         commentDto.setId(comment.getId());
         commentDto.setIssueId(issueId);
+        commentDto.setCreatedAt(comment.getCreatedAt());
         commentDto.setDeleted(comment.isDeleted());
         if (comment.isDeleted()) {
             commentDto.setContent("[comment deleted]");

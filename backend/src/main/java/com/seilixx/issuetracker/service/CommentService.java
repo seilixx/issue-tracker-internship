@@ -6,6 +6,7 @@ import com.seilixx.issuetracker.dto.CommentDto;
 import com.seilixx.issuetracker.entity.Comment;
 import com.seilixx.issuetracker.entity.Issue;
 import com.seilixx.issuetracker.entity.User;
+import com.seilixx.issuetracker.exception.CommentDeletedException;
 import com.seilixx.issuetracker.exception.ResourceNotFoundException;
 import com.seilixx.issuetracker.repository.CommentRepository;
 import com.seilixx.issuetracker.repository.IssueRepository;
@@ -86,6 +87,9 @@ public class CommentService {
     public CommentDto updateComment(Long id, CommentDto dto) {
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
+        if (comment.isDeleted()) {
+            throw new CommentDeletedException("Cannot edit a deleted comment");
+        }
         comment.setTitle(dto.getTitle());
         comment.setContent(dto.getContent());
         return  mapToDto(commentRepository.save(comment));
@@ -106,6 +110,7 @@ public class CommentService {
         CommentDto commentDto = new CommentDto();
         commentDto.setId(comment.getId());
         commentDto.setIssueId(comment.getIssue().getId());
+        commentDto.setCreatedAt(comment.getCreatedAt());
         commentDto.setDeleted(comment.isDeleted());
         if (comment.isDeleted()) {
             commentDto.setContent(DELETED_PLACEHOLDER);

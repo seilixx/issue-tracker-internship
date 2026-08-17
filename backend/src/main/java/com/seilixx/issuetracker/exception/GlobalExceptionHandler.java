@@ -38,6 +38,12 @@ public class GlobalExceptionHandler {
                 .body(new GenericType<>(false, ex.getMessage(), null));
     }
 
+    @ExceptionHandler(CommentDeletedException.class)
+    public ResponseEntity<GenericType<Void>> handleCommentDeleted(CommentDeletedException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new GenericType<>(false, ex.getMessage(), null));
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<GenericType<Void>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
