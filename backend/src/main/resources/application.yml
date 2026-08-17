@@ -9,7 +9,9 @@ spring:
       max-request-size: ${ATTACHMENTS_MAX_SIZE:10MB}
 
 jwt:
-  secret: ${JWT_SECRET:VGhpcy1pcy1hLXNlY3JldC1rZXktdGhhdC1tdXN0LWJlLWF0LWxlYXN0LTI1Ni1iaXRzLWxvbmch}
+  # No fallback on purpose: starting with a predictable, publicly-known secret would let anyone
+  # forge valid tokens. The app must refuse to start rather than run with a guessable key.
+  secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION_MS:3600000}
 
 app:

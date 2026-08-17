@@ -15,6 +15,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,9 +31,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // inject an Authentication directly to test @PreAuthorize in isolation, this test needs the
 // *real* JwtAuthenticationFilter and SecurityConfig wired in — the whole point is verifying
 // what the filter itself does when JJWT throws while parsing the token.
+//
+// jwt.secret is pinned directly here (rather than relying on the JWT_SECRET env var used by
+// application.yml) so this test doesn't depend on the ambient environment: application.yml no
+// longer has a default for JWT_SECRET (it must be set for the app to start at all, see
+// application.yml), and without it this test's own @Value("${jwt.secret}") would silently
+// resolve to the literal, unexpanded string "${JWT_SECRET}" instead of failing loudly.
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(controllers = IssueController.class)
 @Import({ SecurityConfig.class, JwtAuthenticationFilter.class, JwtService.class })
+@TestPropertySource(properties = "jwt.secret=VGhpcy1pcy1hLXNlY3JldC1rZXktdGhhdC1tdXN0LWJlLWF0LWxlYXN0LTI1Ni1iaXRzLWxvbmch")
 class JwtAuthenticationFilterTest {
 
     @Autowired
