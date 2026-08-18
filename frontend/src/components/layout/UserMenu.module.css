@@ -24,18 +24,28 @@
   outline-offset: 2px;
 }
 
-.avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-full);
-  background-color: var(--color-accent);
-  color: var(--color-accent-contrast);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-xs);
+.identity {
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+@media (min-width: 720px) {
+  .identity {
+    display: flex;
+  }
+}
+
+.name {
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  flex-shrink: 0;
+  color: var(--color-text-primary);
+}
+
+.username {
+  font-size: 11px;
+  color: var(--color-text-muted);
 }
 
 .chevron {

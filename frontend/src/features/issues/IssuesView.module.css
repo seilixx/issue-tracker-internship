@@ -7,6 +7,10 @@
 .content {
   flex: 1;
   min-height: 0;
+  /* Flex items default to min-width: auto, which refuses to shrink below the
+     content's intrinsic width — without this, the board's own overflow-x:
+     auto never kicks in and instead pushes the whole page wider. */
+  min-width: 0;
 }
 
 .projectNotFound {

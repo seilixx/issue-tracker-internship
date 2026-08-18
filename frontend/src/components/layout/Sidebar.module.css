@@ -2,36 +2,60 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--color-surface);
+  background-color: var(--color-bg);
   border-right: 1px solid var(--color-border);
+  overflow-x: hidden;
   overflow-y: auto;
+  transition: width var(--transition-base);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   height: 64px;
   padding: 0 var(--space-5);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-lg);
-  color: var(--color-accent);
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border);
 }
 
+.collapsed .brand {
+  padding: 0 var(--space-4);
+  justify-content: center;
+}
+
 .brandMark {
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
   background-color: var(--color-accent);
+  color: var(--color-accent-contrast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.02em;
+}
+
+.brandName {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+  white-space: nowrap;
 }
 
 .nav {
+  flex: 1;
   padding: var(--space-4) var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+}
+
+.collapsed .nav {
+  padding: var(--space-4) var(--space-2);
 }
 
 .section {
@@ -68,6 +92,12 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   transition: background-color var(--transition-fast), color var(--transition-fast);
+  cursor: pointer;
+}
+
+.collapsed .link {
+  justify-content: center;
+  padding: var(--space-2);
 }
 
 .link:hover {
@@ -75,9 +105,24 @@
   color: var(--color-text-primary);
 }
 
-.linkActive {
-  background-color: var(--color-accent-soft);
-  color: var(--color-accent);
+.link[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.link[aria-disabled='true']:hover {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+/* Solid red pill for the active top-level item, matching the mockup exactly
+   ("Dashboard" on a red background) — deliberately stronger than the softer
+   tint used for nested project links below, to keep a visual hierarchy
+   between primary nav and secondary lists. */
+.linkActive,
+.linkActive:hover {
+  background-color: var(--color-accent);
+  color: var(--color-accent-contrast);
 }
 
 .linkIcon {
@@ -85,11 +130,38 @@
   display: inline-flex;
 }
 
-.statusDot {
+.linkLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.newBadge {
   flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
+  padding: 0.15em 0.55em;
+  font-size: 10px;
+}
+
+.addProjectButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.addProjectButton:hover {
+  background-color: var(--color-surface-raised);
+  color: var(--color-accent);
 }
 
 .categoryGroup {
@@ -111,12 +183,26 @@
   font-weight: var(--font-weight-regular);
 }
 
+.collapsed .projectLink {
+  padding-left: var(--space-2);
+}
+
+.projectLinkActive,
+.projectLinkActive:hover {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
 .projectDot {
   flex-shrink: 0;
   width: 6px;
   height: 6px;
   border-radius: var(--radius-full);
   background-color: var(--color-border-strong);
+}
+
+.projectLinkActive .projectDot {
+  background-color: var(--color-accent);
 }
 
 .projectsLoading {
@@ -150,4 +236,37 @@
   font-weight: var(--font-weight-medium);
   color: var(--color-accent);
   cursor: pointer;
+}
+
+.collapseToggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.collapseToggle:hover {
+  background-color: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+
+.collapseIcon {
+  transform: rotate(90deg);
+  transition: transform var(--transition-fast);
+}
+
+.collapseIconCollapsed {
+  transform: rotate(-90deg);
+  transition: transform var(--transition-fast);
 }

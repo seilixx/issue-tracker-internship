@@ -4,9 +4,13 @@
   min-width: 280px;
   max-width: 320px;
   flex: 1;
+  /* --color-surface (not --color-bg, which the page/main area sits on, and
+     not --color-surface-raised, which the cards inside use) — a visibly
+     distinct backdrop that delimits each column from the page and from the
+     cards sitting inside it. */
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--space-3);
   gap: var(--space-3);
   transition: border-color var(--transition-fast), background-color var(--transition-fast);
@@ -38,12 +42,8 @@
 }
 
 .count {
-  margin-left: auto;
-  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-muted);
-  background-color: var(--color-surface-raised);
-  border-radius: var(--radius-full);
-  padding: 0.1em 0.6em;
 }
 
 .cards {

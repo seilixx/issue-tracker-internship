@@ -27,6 +27,22 @@
   font-weight: var(--font-weight-medium);
 }
 
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.deleteButton {
+  color: var(--color-tone-danger);
+  border-color: var(--color-tone-danger);
+}
+
+.deleteButton:hover:not(:disabled) {
+  background-color: var(--color-accent-soft);
+}
+
 .description {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);

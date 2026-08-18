@@ -11,8 +11,8 @@
 
 .comment {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  align-items: flex-start;
+  gap: var(--space-2);
   padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -24,6 +24,14 @@
   border-style: dashed;
 }
 
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
 .commentHeader {
   display: flex;
   align-items: center;
@@ -32,7 +40,7 @@
 
 .author {
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
@@ -82,12 +90,73 @@
   color: var(--color-accent);
 }
 
-.replyFormWrapper {
-  margin-top: var(--space-2);
+.commentActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
 }
 
-.newCommentSection {
+.commentActions .replyButton {
+  margin-top: 0;
+}
+
+.actionLink {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  padding: var(--space-1) 0;
+}
+
+.actionLink:hover:not(:disabled) {
+  color: var(--color-accent);
+}
+
+.actionLink:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.deleteLink:hover:not(:disabled) {
+  color: var(--color-tone-danger);
+}
+
+.editForm {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+.editInput {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+}
+
+.editInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.editError {
+  font-size: var(--font-size-xs);
+  color: var(--color-tone-danger);
+}
+
+.replyFormWrapper {
+  margin-top: var(--space-2);
 }

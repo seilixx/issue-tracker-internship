@@ -7,12 +7,12 @@
    ========================================================================== */
 
 :root {
-  /* Brand accent — Ooredoo-style bold red */
-  --color-accent: #c8102e;
-  --color-accent-hover: #a50d26;
-  --color-accent-active: #8a0b20;
+  /* Brand accent — Ooredoo red */
+  --color-accent: #e30613;
+  --color-accent-hover: #c00510;
+  --color-accent-active: #a3040d;
   --color-accent-contrast: #ffffff;
-  --color-accent-soft: #fbe7ea;
+  --color-accent-soft: #fce6e7;
 
   /* Neutrals */
   --color-bg: #ffffff;
@@ -29,6 +29,7 @@
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-full: 999px;
 
   /* Soft shadows */
@@ -67,6 +68,13 @@
   --transition-fast: 120ms ease;
   --transition-base: 200ms ease;
 
+  /* Code blocks (issue description fenced code) — fixed dark values, not
+     overridden under [data-theme='dark'] below: a code block reads as dark
+     regardless of the app's theme, same convention as most code viewers. */
+  --color-code-bg: #1e1e1e;
+  --color-code-text: #e5e5e5;
+  --color-code-border: #2f2f2f;
+
   /* Status semantics — grey = Open, blue = In Progress, green = Closed/Done */
   --color-status-open: #9ca3af;
   --color-status-in-progress: #3b82f6;
@@ -76,13 +84,47 @@
   --color-priority-low: #3b82f6;
   --color-priority-medium: #f59e0b;
   --color-priority-high: #fb923c;
+
+  /* Generic tone system — used by the new Badge/StatCard primitives (see
+     components/Badge.tsx). Deliberately separate from the status/priority
+     tokens above: those are tied to the Status/Priority enums and drive the
+     existing StatusBadge/PriorityIcon components used on live pages, while
+     these are a general-purpose palette a caller picks by *tone*, not by
+     business meaning — the mapping from "this issue is CRITICAL" to "use
+     the danger tone" happens where a page actually renders one, not here. */
+  --color-tone-danger: var(--color-accent);
+  --color-tone-danger-contrast: var(--color-accent-contrast);
+  --color-tone-warning: #f97316;
+  --color-tone-warning-contrast: #ffffff;
+  --color-tone-info: #2563eb;
+  --color-tone-info-contrast: #ffffff;
+  --color-tone-success: #16a34a;
+  --color-tone-success-contrast: #ffffff;
+  --color-tone-neutral: var(--color-surface);
+  --color-tone-neutral-contrast: var(--color-text-secondary);
+
+  /* Priority donut chart palette (dataviz skill: docs/AUDIT_REPORT.md-style
+     validated tokens, not eyeballed). Deliberately its own set, not a reuse
+     of --color-priority-* / --color-accent above: those were tuned for small
+     UI elements (icons, badge text) on their respective surface, and running
+     them through the palette validator as 4 adjacent large fill segments
+     failed hard — worst case here was medium/high (#f59e0b/#fb923c) at
+     CVD ΔE 2.3 and normal-vision ΔE 4.2, both far under the 8/15 gates.
+     Validated with `node scripts/validate_palette.js` from the dataviz
+     skill against this app's actual card surface (light #ffffff / dark
+     #222225), order LOW→MEDIUM→HIGH→CRITICAL, adjacent-pairs mode (fixed
+     ring order, not a scatter/small-multiples context). */
+  --chart-priority-low: #3b82f6;
+  --chart-priority-medium: #0d9488;
+  --chart-priority-high: #fb923c;
+  --chart-priority-critical: #e30613;
 }
 
 [data-theme='dark'] {
   /* Accent brightened slightly for AA contrast on dark surfaces */
-  --color-accent: #e23a55;
-  --color-accent-hover: #eb5a72;
-  --color-accent-active: #f07a8f;
+  --color-accent: #ff4d5a;
+  --color-accent-hover: #ff6e78;
+  --color-accent-active: #ff8891;
   --color-accent-contrast: #ffffff;
   --color-accent-soft: #3a1620;
 
@@ -108,6 +150,26 @@
   --color-priority-low: #7dd3fc;
   --color-priority-medium: #fbbf24;
   --color-priority-high: #fdba74;
+
+  /* Tone fills stay saturated (not lightened like the tokens above) because
+     they're solid pill backgrounds with white text, not a color read
+     against the page background — a paler tone here would break contrast
+     with its own text instead of helping it. */
+  --color-tone-warning: #ea580c;
+  --color-tone-info: #1d4ed8;
+  --color-tone-success: #15803d;
+  --color-tone-neutral: var(--color-surface);
+  --color-tone-neutral-contrast: var(--color-text-secondary);
+
+  /* Re-stepped for the dark card surface (#222225): the light-mode high/critical
+     fills sat outside the validator's dark lightness band (L 0.48-0.67) and,
+     once corrected, the light-mode critical red collided with high (CVD ΔE 4.5).
+     --color-accent's own dark value (#ff4d5a) was tried first and rejected for
+     the same reason — it's tuned for small bright UI elements, not a large
+     adjacent fill next to amber. low/medium carry over unchanged: both already
+     sit inside the dark band at the light-mode hex. */
+  --chart-priority-high: #c2870a;
+  --chart-priority-critical: #dc2626;
 }
 
 /* ==========================================================================

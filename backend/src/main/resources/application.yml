@@ -13,6 +13,9 @@ jwt:
   # forge valid tokens. The app must refuse to start rather than run with a guessable key.
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION_MS:3600000}
+  # Refresh tokens are opaque random strings stored in the DB (see RefreshToken), not signed
+  # JWTs, so no secret is needed for them - just how long one stays valid. Default 7 days.
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION_MS:604800000}
 
 app:
   attachments:

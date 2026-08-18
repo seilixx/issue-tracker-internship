@@ -76,28 +76,49 @@
 
 .header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
-.headerMeta {
+.headerMain {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-}
-
-.issueId {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .title {
   font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.badgeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.refChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.25em 0.75em;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.refDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
 }
 
 .closeButton {
@@ -117,6 +138,45 @@
 .closeButton:hover {
   color: var(--color-text-primary);
   background-color: var(--color-border);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.actionButton {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.actionButton:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background-color: var(--color-border);
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.deleteAction {
+  color: var(--color-tone-danger);
+}
+
+.deleteAction:hover:not(:disabled) {
+  color: var(--color-tone-danger);
+  background-color: var(--color-accent-soft);
+  border-color: var(--color-tone-danger);
 }
 
 .body {
@@ -143,14 +203,15 @@
   color: var(--color-text-primary);
 }
 
-.description {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  white-space: pre-wrap;
-}
-
 .skeletonBody {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.footer {
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-bg);
 }

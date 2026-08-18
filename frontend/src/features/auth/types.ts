@@ -15,6 +15,7 @@ export interface RegisterPayload {
 // just enough to identify the session; the full profile is fetched separately via /users/me.
 export interface AuthResponse {
   token: string
+  refreshToken: string
   username: string
   uuid: string
 }

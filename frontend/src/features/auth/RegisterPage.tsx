@@ -1,8 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Button } from '@/components/Button'
 import { getErrorMessage } from '@/utils/apiClient'
+import { AuthLayout } from './components/AuthLayout'
 import { useAuth } from './useAuth'
-import styles from './LoginPage.module.css'
+import styles from './components/AuthForm.module.css'
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function RegisterPage() {
   const { register, isAuthenticated } = useAuth()
@@ -13,6 +17,8 @@ export function RegisterPage() {
   const [username, setUsername] = useState('')
   const [mail, setMail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [touchedConfirm, setTouchedConfirm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,8 +26,24 @@ export function RegisterPage() {
     return <Navigate to="/" replace />
   }
 
+  const emailValid = mail.trim().length === 0 || EMAIL_PATTERN.test(mail.trim())
+  const passwordsMatch = confirmPassword.length === 0 || confirmPassword === password
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    setTouchedConfirm(true)
+
+    if (!firstName.trim() || !lastName.trim() || !username.trim() || !mail.trim() || password.length < 6) return
+    if (!EMAIL_PATTERN.test(mail.trim())) {
+      setError('Please enter a valid email address.')
+      return
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
+    if (submitting) return
+
     setSubmitting(true)
     setError(null)
     register({
@@ -36,22 +58,21 @@ export function RegisterPage() {
       .finally(() => setSubmitting(false))
   }
 
-  const canSubmit = firstName.trim() && lastName.trim() && username.trim() && mail.trim() && password.length >= 6
+  const canSubmit =
+    firstName.trim() && lastName.trim() && username.trim() && mail.trim() && password.length >= 6 && confirmPassword.length >= 6
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.card}>
-        <div className={styles.brand}>
-          <span className={styles.brandMark} aria-hidden="true" />
-          IssueTracker
-        </div>
-
-        <div className={styles.heading}>
-          <h1 className={styles.title}>Create an account</h1>
-          <p className={styles.subtitle}>Get set up in a minute.</p>
-        </div>
-
-        <form className={styles.form} onSubmit={handleSubmit}>
+    <AuthLayout
+      title="Create an account"
+      subtitle="Get set up in a minute."
+      footer={
+        <>
+          Already have an account? <Link to="/login">Sign in</Link>
+        </>
+      }
+    >
+      <form className={styles.form} onSubmit={handleSubmit}>
+        <div className={styles.row}>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="firstName">
               First name
@@ -82,37 +103,40 @@ export function RegisterPage() {
               required
             />
           </div>
+        </div>
 
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="username">
-              Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              className={styles.input}
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              autoComplete="username"
-              required
-            />
-          </div>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="username">
+            Username
+          </label>
+          <input
+            id="username"
+            type="text"
+            className={styles.input}
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            autoComplete="username"
+            required
+          />
+        </div>
 
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="mail">
-              Email
-            </label>
-            <input
-              id="mail"
-              type="email"
-              className={styles.input}
-              value={mail}
-              onChange={(event) => setMail(event.target.value)}
-              autoComplete="email"
-              required
-            />
-          </div>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="mail">
+            Email
+          </label>
+          <input
+            id="mail"
+            type="email"
+            className={emailValid ? styles.input : `${styles.input} ${styles.inputError}`}
+            value={mail}
+            onChange={(event) => setMail(event.target.value)}
+            autoComplete="email"
+            required
+          />
+          {!emailValid ? <span className={styles.fieldError}>Enter a valid email address.</span> : null}
+        </div>
 
+        <div className={styles.row}>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="password">
               Password
@@ -129,20 +153,37 @@ export function RegisterPage() {
             />
           </div>
 
-          {error ? <p className={styles.error}>{error}</p> : null}
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="confirmPassword">
+              Confirm password
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              className={passwordsMatch ? styles.input : `${styles.input} ${styles.inputError}`}
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              onBlur={() => setTouchedConfirm(true)}
+              autoComplete="new-password"
+              required
+            />
+            {touchedConfirm && !passwordsMatch ? <span className={styles.fieldError}>Passwords don&apos;t match.</span> : null}
+          </div>
+        </div>
 
-          <button type="submit" className={styles.submitButton} disabled={submitting || !canSubmit}>
-            {submitting ? 'Creating account…' : 'Create account'}
-          </button>
-        </form>
+        {error ? <p className={styles.formError}>{error}</p> : null}
 
-        <p className={styles.footer}>
-          Already have an account?{' '}
-          <Link to="/login" className={styles.footerLink}>
-            Sign in
-          </Link>
-        </p>
-      </div>
-    </div>
+        <Button type="submit" variant="primary" className={styles.submitButton} disabled={submitting || !canSubmit}>
+          {submitting ? (
+            <>
+              <span className={styles.spinner} aria-hidden="true" />
+              Creating account…
+            </>
+          ) : (
+            'Create account'
+          )}
+        </Button>
+      </form>
+    </AuthLayout>
   )
 }

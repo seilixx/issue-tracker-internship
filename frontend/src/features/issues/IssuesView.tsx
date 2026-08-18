@@ -31,6 +31,9 @@ export function IssuesView({ initialProjectId }: IssuesViewProps = {}) {
   const [page, setPage] = useState(0)
   const [size, setSize] = useState(10)
   const [openIssueId, setOpenIssueId] = useState<number | null>(null)
+  // Bumped whenever an issue is edited/deleted from the detail panel — used as
+  // a key on the board/list below to force a refetch from the server.
+  const [dataVersion, setDataVersion] = useState(0)
 
   // Re-sync when navigating between two /projects/:id links without a full remount
   // (react-router keeps this component mounted since the route element is the same).
@@ -101,6 +104,7 @@ export function IssuesView({ initialProjectId }: IssuesViewProps = {}) {
       <div className={styles.content}>
         {viewMode === 'board' ? (
           <IssueBoard
+            key={`board-${dataVersion}`}
             filters={{ projectId, priority, assigneeUuid }}
             sort={sort}
             projectsById={projectsById}
@@ -108,6 +112,7 @@ export function IssuesView({ initialProjectId }: IssuesViewProps = {}) {
           />
         ) : (
           <IssueTable
+            key={`table-${dataVersion}`}
             filters={{ projectId, status, priority, assigneeUuid }}
             sort={sort}
             onSortChange={handleFilterChange(setSort)}
@@ -124,7 +129,12 @@ export function IssuesView({ initialProjectId }: IssuesViewProps = {}) {
         )}
       </div>
 
-      <IssueDetailPanel issueId={openIssueId} projectsById={projectsById} onClose={() => setOpenIssueId(null)} />
+      <IssueDetailPanel
+        issueId={openIssueId}
+        projectsById={projectsById}
+        onClose={() => setOpenIssueId(null)}
+        onIssueMutated={() => setDataVersion((version) => version + 1)}
+      />
     </div>
   )
 }

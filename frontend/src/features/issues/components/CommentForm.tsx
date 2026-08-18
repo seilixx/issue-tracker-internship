@@ -12,22 +12,24 @@ interface CommentFormProps {
   onCancel?: () => void
 }
 
+// Single field, mapped to the backend's required `title` (content stays
+// unset) — the comment model technically has two fields (title + optional
+// content), but the mockup's compact "write a comment" box only shows one,
+// so this collapses to that rather than showing two inputs for one message.
 export function CommentForm({ issueId, parentCommentId, autoFocus, onSubmitted, onCancel }: CommentFormProps) {
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
+  const [text, setText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!title.trim() || submitting) return
+    if (!text.trim() || submitting) return
 
     setSubmitting(true)
     setError(null)
-    createComment(issueId, { title: title.trim(), content: content.trim() || undefined, parentCommentId })
+    createComment(issueId, { title: text.trim(), parentCommentId })
       .then(() => {
-        setTitle('')
-        setContent('')
+        setText('')
         onSubmitted()
       })
       .catch((err) => setError(getErrorMessage(err, 'Could not post the comment.')))
@@ -36,32 +38,23 @@ export function CommentForm({ issueId, parentCommentId, autoFocus, onSubmitted, 
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      <input
-        type="text"
-        className={styles.titleInput}
-        placeholder={parentCommentId ? 'Reply title' : 'Comment title'}
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-        autoFocus={autoFocus}
-        required
-      />
-      <textarea
-        className={styles.contentInput}
-        placeholder="Write a message (optional)…"
-        value={content}
-        onChange={(event) => setContent(event.target.value)}
-        rows={3}
-      />
-      <div className={styles.actions}>
-        <button type="submit" className={styles.submitButton} disabled={submitting || !title.trim()}>
-          <IconSend size={13} />
-          {parentCommentId ? 'Reply' : 'Comment'}
-        </button>
+      <div className={styles.row}>
+        <input
+          type="text"
+          className={styles.input}
+          placeholder={parentCommentId ? 'Write a reply…' : 'Write a comment…'}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          autoFocus={autoFocus}
+        />
         {onCancel ? (
           <button type="button" className={styles.cancelButton} onClick={onCancel}>
             Cancel
           </button>
         ) : null}
+        <button type="submit" className={styles.sendButton} disabled={submitting || !text.trim()} aria-label="Send comment">
+          <IconSend size={14} />
+        </button>
       </div>
       {error ? <p className={styles.error}>{error}</p> : null}
     </form>

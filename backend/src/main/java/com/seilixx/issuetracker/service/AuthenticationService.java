@@ -2,7 +2,9 @@ package com.seilixx.issuetracker.service;
 
 import com.seilixx.issuetracker.dto.AuthenticationRequest;
 import com.seilixx.issuetracker.dto.AuthenticationResponse;
+import com.seilixx.issuetracker.dto.RefreshTokenRequest;
 import com.seilixx.issuetracker.dto.RegisterRequest;
+import com.seilixx.issuetracker.entity.RefreshToken;
 import com.seilixx.issuetracker.entity.Role;
 import com.seilixx.issuetracker.entity.User;
 import com.seilixx.issuetracker.repository.UserRepository;
@@ -20,6 +22,7 @@ public class AuthenticationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
     private final AuthenticationManager authenticationManager;
 
     public AuthenticationResponse register(RegisterRequest request) {
@@ -38,11 +41,9 @@ public class AuthenticationService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.USER);
 
-
         userRepository.save(user);
 
-        String jwtToken = jwtService.generateToken(user);
-        return new AuthenticationResponse(jwtToken, user.getUsername(), user.getUuid());
+        return issueTokens(user);
     }
 
     public AuthenticationResponse login(AuthenticationRequest request) {
@@ -56,7 +57,21 @@ public class AuthenticationService {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        return issueTokens(user);
+    }
+
+    public AuthenticationResponse refresh(RefreshTokenRequest request) {
+        RefreshToken consumed = refreshTokenService.verifyAndConsume(request.getRefreshToken());
+        return issueTokens(consumed.getUser());
+    }
+
+    public void logout(RefreshTokenRequest request) {
+        refreshTokenService.revoke(request.getRefreshToken());
+    }
+
+    private AuthenticationResponse issueTokens(User user) {
         String jwtToken = jwtService.generateToken(user);
-        return new AuthenticationResponse(jwtToken, user.getUsername(), user.getUuid());
+        RefreshToken refreshToken = refreshTokenService.create(user);
+        return new AuthenticationResponse(jwtToken, refreshToken.getToken(), user.getUsername(), user.getUuid());
     }
 }

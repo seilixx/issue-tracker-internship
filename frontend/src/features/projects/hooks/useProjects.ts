@@ -3,6 +3,16 @@ import { getErrorMessage } from '@/utils/apiClient'
 import { fetchProjects } from '../api'
 import type { Project } from '../types'
 
+// Several components keep their own copy of the project list (sidebar, filters
+// bar, IssuesView...). Instead of a shared store, any mutation
+// (create/update/delete) fires this event and every mounted useProjects()
+// refetches — simple and impossible to leave stale.
+const PROJECTS_CHANGED_EVENT = 'issuetracker:projects-changed'
+
+export function notifyProjectsChanged() {
+  window.dispatchEvent(new Event(PROJECTS_CHANGED_EVENT))
+}
+
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,6 +41,11 @@ export function useProjects() {
   }, [reloadToken])
 
   const refetch = useCallback(() => setReloadToken((token) => token + 1), [])
+
+  useEffect(() => {
+    window.addEventListener(PROJECTS_CHANGED_EVENT, refetch)
+    return () => window.removeEventListener(PROJECTS_CHANGED_EVENT, refetch)
+  }, [refetch])
 
   return { projects, loading, error, refetch }
 }

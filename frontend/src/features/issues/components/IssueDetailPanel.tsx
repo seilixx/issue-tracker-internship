@@ -1,33 +1,51 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Badge, type BadgeTone } from '@/components/Badge'
 import { EmptyState } from '@/components/EmptyState'
+import { PriorityBadge, PRIORITY_TOKEN_VARS } from '@/components/PriorityBadge'
 import { Skeleton } from '@/components/Skeleton'
-import { StatusBadge } from '@/components/StatusBadge'
-import { IconAlertTriangle, IconMessageCircle, IconPaperclip, IconX } from '@/components/icons'
+import { IconActivity, IconAlertTriangle, IconMessageCircle, IconPaperclip, IconX } from '@/components/icons'
+import { useToast } from '@/components/toast/useToast'
 import { useUsersLookup } from '@/features/users/hooks/useUsersLookup'
 import { useAuth } from '@/features/auth/useAuth'
 import type { Project } from '@/features/projects/types'
+import { getErrorMessage } from '@/utils/apiClient'
+import type { Status } from '@/utils/apiTypes'
+import { deleteIssue } from '../api'
 import { useIssueDetail } from '../hooks/useIssueDetail'
 import { computeIssuePermissions } from '../permissions'
+import { CommentForm } from './CommentForm'
+import { EditIssueModal } from './EditIssueModal'
+import { IssueActivityTimeline } from './IssueActivityTimeline'
 import { IssueAttachmentsSection } from './IssueAttachmentsSection'
 import { IssueCommentsSection } from './IssueCommentsSection'
+import { IssueDescription } from './IssueDescription'
 import { IssueDetailFields } from './IssueDetailFields'
 import { IssueStatusControl } from './IssueStatusControl'
+import { RestrictedNote } from './RestrictedNote'
 import styles from './IssueDetailPanel.module.css'
+
+const STATUS_LABELS: Record<Status, string> = { OPEN: 'Open', IN_PROGRESS: 'In Progress', DONE: 'Closed' }
+const STATUS_TONES: Record<Status, BadgeTone> = { OPEN: 'neutral', IN_PROGRESS: 'info', DONE: 'success' }
 
 interface IssueDetailPanelProps {
   issueId: number | null
   projectsById: Map<number, Project>
   onClose: () => void
+  /** Fired after the issue is edited or deleted, so the parent list can refresh. */
+  onIssueMutated?: () => void
 }
 
 // Matches --transition-base in index.css — kept as a constant here so the
 // unmount timer and the CSS animation duration can't silently drift apart.
 const CLOSE_ANIMATION_MS = 200
 
-export function IssueDetailPanel({ issueId, projectsById, onClose }: IssueDetailPanelProps) {
+export function IssueDetailPanel({ issueId, projectsById, onClose, onIssueMutated }: IssueDetailPanelProps) {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const [visible, setVisible] = useState(false)
   const [closing, setClosing] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   // Keeps rendering the last-open issue's data while the close animation
   // plays, instead of the content disappearing a beat before the panel does.
   const [displayedIssueId, setDisplayedIssueId] = useState<number | null>(null)
@@ -75,6 +93,22 @@ export function IssueDetailPanel({ issueId, projectsById, onClose }: IssueDetail
 
   const project = issue ? projectsById.get(issue.projectId) : undefined
   const permissions = issue && user ? computeIssuePermissions(issue, project, user) : null
+  const canDelete = user?.role === 'ADMIN' || user?.role === 'MANAGER'
+
+  function handleDelete() {
+    if (!issue || deleting) return
+    if (!window.confirm(`Delete issue #${issue.id} "${issue.title}"? This cannot be undone.`)) return
+
+    setDeleting(true)
+    deleteIssue(issue.id)
+      .then(() => {
+        showToast('Issue deleted.', 'success')
+        onClose()
+        onIssueMutated?.()
+      })
+      .catch((err) => showToast(getErrorMessage(err, 'Could not delete the issue.'), 'error'))
+      .finally(() => setDeleting(false))
+  }
 
   return (
     <>
@@ -86,18 +120,40 @@ export function IssueDetailPanel({ issueId, projectsById, onClose }: IssueDetail
         aria-label={issue ? issue.title : 'Issue detail'}
       >
         <div className={styles.header}>
-          <div>
-            {issue ? (
-              <div className={styles.headerMeta}>
-                <span className={styles.issueId}>#{issue.id}</span>
-                <StatusBadge status={issue.status} />
-              </div>
-            ) : null}
+          <div className={styles.headerMain}>
             <h2 className={styles.title}>{issue ? issue.title : loading ? 'Loading…' : 'Issue'}</h2>
+            <div className={styles.headerActions}>
+              {issue && permissions?.canEditFields ? (
+                <button type="button" className={styles.actionButton} onClick={() => setEditOpen(true)}>
+                  Edit
+                </button>
+              ) : null}
+              {issue && canDelete ? (
+                <button
+                  type="button"
+                  className={`${styles.actionButton} ${styles.deleteAction}`}
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </button>
+              ) : null}
+              <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
+                <IconX size={16} />
+              </button>
+            </div>
           </div>
-          <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
-            <IconX size={16} />
-          </button>
+
+          {issue ? (
+            <div className={styles.badgeRow}>
+              <span className={styles.refChip}>
+                <span className={styles.refDot} style={{ backgroundColor: `var(${PRIORITY_TOKEN_VARS[issue.priority]})` }} />
+                #{issue.id}
+              </span>
+              <PriorityBadge priority={issue.priority} />
+              <Badge tone={STATUS_TONES[issue.status]}>{STATUS_LABELS[issue.status]}</Badge>
+            </div>
+          ) : null}
         </div>
 
         <div className={styles.body}>
@@ -126,7 +182,12 @@ export function IssueDetailPanel({ issueId, projectsById, onClose }: IssueDetail
 
           {!loading && issue && permissions ? (
             <>
-              {issue.description ? <p className={styles.description}>{issue.description}</p> : null}
+              {issue.description ? (
+                <div className={styles.section}>
+                  <span className={styles.sectionTitle}>Description</span>
+                  <IssueDescription description={issue.description} />
+                </div>
+              ) : null}
 
               <IssueDetailFields issue={issue} project={project} usersByUuid={usersByUuid} />
 
@@ -172,10 +233,42 @@ export function IssueDetailPanel({ issueId, projectsById, onClose }: IssueDetail
                   onChanged={refetch}
                 />
               </div>
+
+              <div className={styles.section}>
+                <span className={styles.sectionTitle}>
+                  <IconActivity size={14} />
+                  Audit trail
+                </span>
+                <IssueActivityTimeline issue={issue} usersByUuid={usersByUuid} />
+              </div>
             </>
           ) : null}
         </div>
+
+        {!loading && issue && permissions ? (
+          <div className={styles.footer}>
+            {permissions.canComment ? (
+              <CommentForm issueId={issue.id} onSubmitted={refetch} />
+            ) : (
+              <RestrictedNote>Only the reporter, assignee, or a manager/admin can comment on this issue.</RestrictedNote>
+            )}
+          </div>
+        ) : null}
       </div>
+
+      {editOpen && issue ? (
+        <EditIssueModal
+          issue={issue}
+          initialAssignees={issue.assignedUuids
+            .map((uuid) => usersByUuid[uuid])
+            .filter((assignee) => assignee != null)}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => {
+            refetch()
+            onIssueMutated?.()
+          }}
+        />
+      ) : null}
     </>
   )
 }

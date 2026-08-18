@@ -10,6 +10,13 @@ export function getCachedUser(uuid: string): UserSummary | undefined {
   return cache.get(uuid)
 }
 
+/** Overwrites a cached entry — used after editing your own profile/avatar so any
+ *  other place already showing you (assignee chips, comment authors...) picks up
+ *  the change instead of keeping whatever was cached before the edit. */
+export function setCachedUser(user: UserSummary): void {
+  cache.set(user.uuid, user)
+}
+
 export function fetchUserCached(uuid: string): Promise<UserSummary | null> {
   const cached = cache.get(uuid)
   if (cached) return Promise.resolve(cached)

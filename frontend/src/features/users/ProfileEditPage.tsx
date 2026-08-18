@@ -1,47 +1,33 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { EmptyState } from '@/components/EmptyState'
-import { Skeleton } from '@/components/Skeleton'
-import { IconAlertTriangle } from '@/components/icons'
+import { useAuth } from '@/features/auth/useAuth'
 import { getErrorMessage } from '@/utils/apiClient'
 import { getInitials } from '@/utils/format'
-import { fetchMyProfile, updateMyProfile } from './api'
+import { updateMyProfile } from './api'
 import { AvatarUploadControl } from './components/AvatarUploadControl'
+import { setCachedUser } from './userCache'
 import type { UserSummary } from './types'
 import styles from './ProfileEditPage.module.css'
 
 export function ProfileEditPage() {
-  const [user, setUser] = useState<UserSummary | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  // Reads straight from the session (AuthProvider already loaded it at mount) —
+  // no separate fetch/loading state needed, and it's the single source of truth
+  // this page writes back to via auth.setUser() below.
+  const { user, setUser } = useAuth()
 
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [bio, setBio] = useState('')
+  const [firstName, setFirstName] = useState(user?.firstName ?? '')
+  const [lastName, setLastName] = useState(user?.lastName ?? '')
+  const [bio, setBio] = useState(user?.bio ?? '')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
-    fetchMyProfile()
-      .then((me) => {
-        if (cancelled) return
-        setUser(me)
-        setFirstName(me.firstName)
-        setLastName(me.lastName)
-        setBio(me.bio ?? '')
-      })
-      .catch((err) => {
-        if (!cancelled) setLoadError(getErrorMessage(err, 'Could not load your profile.'))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  if (!user) return null
+
+  function applyUpdate(updated: UserSummary) {
+    setUser(updated)
+    setCachedUser(updated)
+  }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -50,43 +36,18 @@ export function ProfileEditPage() {
     setSaved(false)
     updateMyProfile({ firstName: firstName.trim(), lastName: lastName.trim(), bio: bio.trim() || undefined })
       .then((updated) => {
-        setUser(updated)
+        applyUpdate(updated)
         setSaved(true)
       })
       .catch((err) => setSaveError(getErrorMessage(err, 'Could not save your profile.')))
       .finally(() => setSaving(false))
   }
 
-  if (loading) {
-    return (
-      <div className={styles.wrapper}>
-        <Skeleton width="40%" height={28} />
-        <Skeleton height={80} />
-        <Skeleton height={120} />
-      </div>
-    )
-  }
-
-  if (loadError || !user) {
-    return (
-      <EmptyState
-        tone="error"
-        icon={<IconAlertTriangle size={22} />}
-        title="Couldn't load your profile"
-        description={loadError ?? 'Unknown error'}
-      />
-    )
-  }
-
   return (
     <div className={styles.wrapper}>
       <h1 className={styles.title}>Edit profile</h1>
 
-      <AvatarUploadControl
-        avatarUrl={user.avatarUrl}
-        initials={getInitials(user.firstName, user.lastName)}
-        onUploaded={(updated) => setUser(updated)}
-      />
+      <AvatarUploadControl avatarUrl={user.avatarUrl} initials={getInitials(user.firstName, user.lastName)} onUploaded={applyUpdate} />
 
       <form className={styles.form} onSubmit={handleSubmit}>
         <div className={styles.field}>

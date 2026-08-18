@@ -3,6 +3,15 @@
   display: grid;
   grid-template-columns: 264px 1fr;
   grid-template-rows: 64px 1fr;
+  transition: grid-template-columns var(--transition-base);
+}
+
+/* Compound selector on purpose: needs to reliably beat .shell on specificity
+   (0-0-2-0 vs 0-0-1-0), not rely on cascade order — two same-specificity
+   single-class rules aren't guaranteed to keep source order once Vite injects
+   each CSS module as its own <style> tag in dev. */
+.shell.shellCollapsed {
+  grid-template-columns: 76px 1fr;
 }
 
 .sidebar {

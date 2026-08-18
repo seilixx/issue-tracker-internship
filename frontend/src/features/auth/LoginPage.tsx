@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Button } from '@/components/Button'
 import { getErrorMessage } from '@/utils/apiClient'
+import { AuthLayout } from './components/AuthLayout'
 import { useAuth } from './useAuth'
-import styles from './LoginPage.module.css'
+import styles from './components/AuthForm.module.css'
 
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth()
@@ -21,6 +23,8 @@ export function LoginPage() {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    if (!username.trim() || !password || submitting) return
+
     setSubmitting(true)
     setError(null)
     login({ username: username.trim(), password })
@@ -33,64 +37,65 @@ export function LoginPage() {
   }
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.card}>
-        <div className={styles.brand}>
-          <span className={styles.brandMark} aria-hidden="true" />
-          IssueTracker
+    <AuthLayout
+      title="Sign in"
+      subtitle="Welcome back — enter your credentials to continue."
+      footer={
+        <>
+          Don&apos;t have an account? <Link to="/register">Register</Link>
+        </>
+      }
+    >
+      <form className={styles.form} onSubmit={handleSubmit}>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="username">
+            Username or email
+          </label>
+          <input
+            id="username"
+            type="text"
+            className={styles.input}
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            autoComplete="username"
+            autoFocus
+            required
+          />
         </div>
 
-        <div className={styles.heading}>
-          <h1 className={styles.title}>Sign in</h1>
-          <p className={styles.subtitle}>Welcome back — enter your credentials to continue.</p>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="password">
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            className={styles.input}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="current-password"
+            required
+          />
         </div>
 
-        <form className={styles.form} onSubmit={handleSubmit}>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="username">
-              Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              className={styles.input}
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              autoComplete="username"
-              autoFocus
-              required
-            />
-          </div>
+        {error ? <p className={styles.formError}>{error}</p> : null}
 
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              className={styles.input}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
-
-          {error ? <p className={styles.error}>{error}</p> : null}
-
-          <button type="submit" className={styles.submitButton} disabled={submitting || !username.trim() || !password}>
-            {submitting ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
-
-        <p className={styles.footer}>
-          Don't have an account?{' '}
-          <Link to="/register" className={styles.footerLink}>
-            Register
-          </Link>
-        </p>
-      </div>
-    </div>
+        <Button
+          type="submit"
+          variant="primary"
+          className={styles.submitButton}
+          disabled={submitting || !username.trim() || !password}
+        >
+          {submitting ? (
+            <>
+              <span className={styles.spinner} aria-hidden="true" />
+              Signing in…
+            </>
+          ) : (
+            'Sign in'
+          )}
+        </Button>
+      </form>
+    </AuthLayout>
   )
 }

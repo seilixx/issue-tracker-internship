@@ -1,41 +1,31 @@
-import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Button } from '@/components/Button'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { IconPlus, IconSearch } from '@/components/icons'
+import { IconPlus } from '@/components/icons'
+import { CreateIssueModal } from '@/features/issues/components/CreateIssueModal'
+import { GlobalSearch } from './GlobalSearch'
+import { NotificationButton } from './NotificationButton'
 import { UserMenu } from './UserMenu'
 import styles from './Topbar.module.css'
 
 export function Topbar() {
-  const [query, setQuery] = useState('')
-  const navigate = useNavigate()
-
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (!query.trim()) return
-    navigate(`/users/search?q=${encodeURIComponent(query.trim())}`)
-  }
+  const [createOpen, setCreateOpen] = useState(false)
 
   return (
     <header className={styles.topbar}>
-      <form className={styles.search} onSubmit={handleSubmit} role="search">
-        <IconSearch size={16} className={styles.searchIcon} />
-        <input
-          type="search"
-          className={styles.searchInput}
-          placeholder="Search people... (press Enter)"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </form>
+      <GlobalSearch />
 
       <div className={styles.actions}>
-        <button type="button" className={styles.createButton}>
+        <Button variant="primary" onClick={() => setCreateOpen(true)}>
           <IconPlus size={16} />
-          Create issue
-        </button>
+          Manage Issue
+        </Button>
+        <NotificationButton />
         <ThemeToggle />
         <UserMenu />
       </div>
+
+      <CreateIssueModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </header>
   )
 }

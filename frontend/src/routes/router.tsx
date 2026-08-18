@@ -1,11 +1,12 @@
 import { createBrowserRouter, Outlet } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
+import { ToastProvider } from '@/components/toast/ToastProvider'
 import { MainPlaceholder } from '@/components/layout/MainPlaceholder'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
 import { RegisterPage } from '@/features/auth/RegisterPage'
-import { IssuesView } from '@/features/issues/IssuesView'
+import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { ProjectBoardPage } from '@/features/projects/ProjectBoardPage'
 import { ProfileEditPage } from '@/features/users/ProfileEditPage'
 import { ProfilePage } from '@/features/users/ProfilePage'
@@ -29,29 +30,17 @@ export const router = createBrowserRouter([
         children: [
           {
             path: '/',
-            element: <AppShell />,
+            // ToastProvider wraps the whole authenticated shell so the sidebar,
+            // topbar and every page can fire feedback toasts.
+            element: (
+              <ToastProvider>
+                <AppShell />
+              </ToastProvider>
+            ),
             children: [
               {
                 index: true,
-                element: <IssuesView />,
-              },
-              {
-                path: 'my-issues',
-                element: (
-                  <MainPlaceholder
-                    title="My Issues"
-                    description="Issues you report or are assigned to will show up here."
-                  />
-                ),
-              },
-              {
-                path: 'filters/:status',
-                element: (
-                  <MainPlaceholder
-                    title="Filtered issues"
-                    description="The board and list views land in the next step."
-                  />
-                ),
+                element: <DashboardPage />,
               },
               {
                 path: 'projects/:projectId',

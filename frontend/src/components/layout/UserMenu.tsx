@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AvatarChip } from '@/components/AvatarChip'
 import { IconChevronDown, IconLogOut, IconUserCircle } from '@/components/icons'
 import { useAuth } from '@/features/auth/useAuth'
 import { getInitials } from '@/utils/format'
@@ -45,8 +46,12 @@ export function UserMenu() {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        <span className={styles.avatar} aria-hidden="true">
-          {getInitials(user.firstName, user.lastName)}
+        <AvatarChip initials={getInitials(user.firstName, user.lastName)} avatarUrl={user.avatarUrl} size="sm" />
+        <span className={styles.identity}>
+          <span className={styles.name}>
+            {user.firstName} {user.lastName}
+          </span>
+          <span className={styles.username}>@{user.username}</span>
         </span>
         <IconChevronDown size={14} className={open ? `${styles.chevron} ${styles.chevronOpen}` : styles.chevron} />
       </button>

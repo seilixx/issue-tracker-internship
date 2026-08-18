@@ -30,8 +30,9 @@ export function IssueBoardColumn({ status, count, isDragOver, onDragOver, onDrag
     >
       <div className={styles.header}>
         <span className={styles.dot} style={{ backgroundColor: `var(${meta.tokenVar})` }} aria-hidden="true" />
-        <span className={styles.title}>{meta.label}</span>
-        <span className={styles.count}>{count}</span>
+        <span className={styles.title}>
+          {meta.label} <span className={styles.count}>· {count}</span>
+        </span>
       </div>
 
       <div className={styles.cards}>

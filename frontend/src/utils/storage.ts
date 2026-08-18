@@ -18,3 +18,21 @@ export function setStoredTheme(theme: Theme): void {
     // localStorage unavailable (private browsing, disabled storage) — theme just won't persist
   }
 }
+
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'issuetracker-sidebar-collapsed'
+
+export function getStoredSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+export function setStoredSidebarCollapsed(collapsed: boolean): void {
+  try {
+    localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed))
+  } catch {
+    // see setStoredTheme
+  }
+}

@@ -1,8 +1,18 @@
-import { useMemo } from 'react'
-import { NavLink } from 'react-router-dom'
-import { IconAlertTriangle, IconFolder, IconInbox } from '@/components/icons'
+import { useMemo, useState } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
+import {
+  IconAlertTriangle,
+  IconChevronDown,
+  IconFolder,
+  IconGrid,
+  IconPlus,
+  IconSettings,
+  IconUsers,
+} from '@/components/icons'
 import { Skeleton } from '@/components/Skeleton'
+import { useAuth } from '@/features/auth/useAuth'
 import { useProjects } from '@/features/projects/hooks/useProjects'
+import { ProjectFormModal } from '@/features/projects/components/ProjectFormModal'
 import type { Project } from '@/features/projects/types'
 import type { ProjectCategory } from '@/utils/apiTypes'
 import styles from './Sidebar.module.css'
@@ -24,10 +34,19 @@ function groupByCategory(projects: Project[]) {
   }))
 }
 
-const QUICK_FILTERS = [
-  { path: '/filters/open', label: 'Open', tokenVar: '--color-status-open' },
-  { path: '/filters/in-progress', label: 'In Progress', tokenVar: '--color-status-in-progress' },
-  { path: '/filters/closed', label: 'Closed', tokenVar: '--color-status-done' },
+// Adapted from the mockup's nav to what this app actually has:
+// - "Dashboard" -> the real issues board/list ("/"). The mockup's "Issues" item
+//   would point at the exact same page, so it's dropped rather than duplicated.
+// - "Developers" + "Team" -> merged into one real item, the user directory ("/users/search").
+// - "Settings" -> the real profile-edit page ("/profile/edit") — the only "settings"
+//   this app actually has today.
+// - "Progress" and "Comments" (mockup shows "Camoats", unclear/garbled) have no
+//   functional equivalent anywhere in this app, so they're left out rather than
+//   linking to an empty page.
+const PRIMARY_NAV = [
+  { to: '/', label: 'Dashboard', icon: IconGrid, end: true },
+  { to: '/users/search', label: 'Team', icon: IconUsers },
+  { to: '/profile/edit', label: 'Settings', icon: IconSettings },
 ]
 
 function navLinkClassName({ isActive }: { isActive: boolean }) {
@@ -35,49 +54,61 @@ function navLinkClassName({ isActive }: { isActive: boolean }) {
 }
 
 function projectLinkClassName({ isActive }: { isActive: boolean }) {
-  return isActive ? `${styles.projectLink} ${styles.linkActive}` : styles.projectLink
+  return isActive ? `${styles.projectLink} ${styles.projectLinkActive}` : styles.projectLink
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean
+  onToggleCollapsed: () => void
+}
+
+export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { projects, loading, error, refetch } = useProjects()
   const groups = useMemo(() => groupByCategory(projects), [projects])
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [createProjectOpen, setCreateProjectOpen] = useState(false)
+  const canManageProjects = user?.role === 'ADMIN' || user?.role === 'MANAGER'
 
   return (
-    <nav className={styles.sidebar} aria-label="Primary">
+    <nav className={collapsed ? `${styles.sidebar} ${styles.collapsed}` : styles.sidebar} aria-label="Primary">
       <div className={styles.brand}>
-        <span className={styles.brandMark} aria-hidden="true" />
-        IssueTracker
+        <span className={styles.brandMark} aria-hidden="true">
+          IT
+        </span>
+        {!collapsed ? <span className={styles.brandName}>IssueTracker</span> : null}
       </div>
 
       <div className={styles.nav}>
         <div className={styles.section}>
-          <NavLink to="/my-issues" className={navLinkClassName}>
-            <span className={styles.linkIcon}>
-              <IconInbox size={16} />
-            </span>
-            My Issues
-          </NavLink>
-        </div>
-
-        <div className={styles.section}>
-          <p className={styles.sectionTitle}>Quick filters</p>
-          {QUICK_FILTERS.map((filter) => (
-            <NavLink key={filter.path} to={filter.path} className={navLinkClassName}>
-              <span
-                className={styles.statusDot}
-                style={{ backgroundColor: `var(${filter.tokenVar})` }}
-                aria-hidden="true"
-              />
-              {filter.label}
+          {PRIMARY_NAV.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end} className={navLinkClassName} title={collapsed ? item.label : undefined}>
+              <span className={styles.linkIcon}>
+                <item.icon size={17} />
+              </span>
+              {!collapsed ? <span className={styles.linkLabel}>{item.label}</span> : null}
             </NavLink>
           ))}
         </div>
 
         <div className={styles.section}>
-          <p className={styles.sectionTitle}>
-            <IconFolder size={12} className={styles.sectionTitleIcon} />
-            Projects
-          </p>
+          {!collapsed ? (
+            <p className={styles.sectionTitle}>
+              <IconFolder size={12} className={styles.sectionTitleIcon} />
+              Projects
+              {canManageProjects ? (
+                <button
+                  type="button"
+                  className={styles.addProjectButton}
+                  onClick={() => setCreateProjectOpen(true)}
+                  aria-label="Create project"
+                  title="Create project"
+                >
+                  <IconPlus size={13} />
+                </button>
+              ) : null}
+            </p>
+          ) : null}
           {loading ? (
             <div className={styles.projectsLoading}>
               <Skeleton height={14} width="70%" />
@@ -85,23 +116,30 @@ export function Sidebar() {
               <Skeleton height={14} width="60%" />
             </div>
           ) : error ? (
-            <p className={styles.projectsError}>
-              <IconAlertTriangle size={12} />
-              {error}{' '}
-              <button type="button" className={styles.retryButton} onClick={refetch}>
-                Retry
-              </button>
-            </p>
+            !collapsed ? (
+              <p className={styles.projectsError}>
+                <IconAlertTriangle size={12} />
+                {error}{' '}
+                <button type="button" className={styles.retryButton} onClick={refetch}>
+                  Retry
+                </button>
+              </p>
+            ) : null
           ) : groups.length === 0 ? (
-            <p className={styles.projectsEmpty}>No projects yet.</p>
+            !collapsed ? <p className={styles.projectsEmpty}>No projects yet.</p> : null
           ) : (
             groups.map((group) => (
               <div key={group.category} className={styles.categoryGroup}>
-                <p className={styles.categoryLabel}>{group.label}</p>
+                {!collapsed ? <p className={styles.categoryLabel}>{group.label}</p> : null}
                 {group.projects.map((project) => (
-                  <NavLink key={project.id} to={`/projects/${project.id}`} className={projectLinkClassName}>
+                  <NavLink
+                    key={project.id}
+                    to={`/projects/${project.id}`}
+                    className={projectLinkClassName}
+                    title={collapsed ? project.title : undefined}
+                  >
                     <span className={styles.projectDot} aria-hidden="true" />
-                    {project.title}
+                    {!collapsed ? project.title : null}
                   </NavLink>
                 ))}
               </div>
@@ -109,6 +147,22 @@ export function Sidebar() {
           )}
         </div>
       </div>
+
+      <button
+        type="button"
+        className={styles.collapseToggle}
+        onClick={onToggleCollapsed}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        <IconChevronDown size={15} className={collapsed ? styles.collapseIconCollapsed : styles.collapseIcon} />
+        {!collapsed ? <span>Collapse</span> : null}
+      </button>
+
+      <ProjectFormModal
+        open={createProjectOpen}
+        onClose={() => setCreateProjectOpen(false)}
+        onSaved={(project) => navigate(`/projects/${project.id}`)}
+      />
     </nav>
   )
 }

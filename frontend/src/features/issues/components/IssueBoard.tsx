@@ -51,25 +51,33 @@ export function IssueBoard({ filters, sort, projectsById, onOpenIssue }: IssueBo
     setDragOverStatus(null)
   }
 
+  // Shared by drag-and-drop and the card's "..." menu — same optimistic
+  // update + rollback-on-403/409 behavior regardless of how the move was
+  // triggered.
+  function changeStatus(issue: Issue, targetStatus: Status) {
+    if (issue.status === targetStatus || issue.status === 'DONE') return
+
+    const previousStatus = issue.status
+    setIssues((prev) => prev.map((candidate) => (candidate.id === issue.id ? { ...candidate, status: targetStatus } : candidate)))
+
+    updateStatus(issue.id, targetStatus)
+      .then((updated) => {
+        setIssues((prev) => prev.map((candidate) => (candidate.id === issue.id ? updated : candidate)))
+      })
+      .catch((err) => {
+        setIssues((prev) => prev.map((candidate) => (candidate.id === issue.id ? { ...candidate, status: previousStatus } : candidate)))
+        setBannerError(`Could not move "${issue.title}" to ${targetStatus === 'DONE' ? 'Closed' : targetStatus}: ${getErrorMessage(err)}`)
+      })
+  }
+
   function handleColumnDrop(event: DragEvent<HTMLDivElement>, targetStatus: Status) {
     event.preventDefault()
     setDragOverStatus(null)
 
     const id = Number(event.dataTransfer.getData('text/plain'))
     const issue = issues.find((candidate) => candidate.id === id)
-    if (!issue || issue.status === targetStatus || issue.status === 'DONE') return
-
-    const previousStatus = issue.status
-    setIssues((prev) => prev.map((candidate) => (candidate.id === id ? { ...candidate, status: targetStatus } : candidate)))
-
-    updateStatus(id, targetStatus)
-      .then((updated) => {
-        setIssues((prev) => prev.map((candidate) => (candidate.id === id ? updated : candidate)))
-      })
-      .catch((err) => {
-        setIssues((prev) => prev.map((candidate) => (candidate.id === id ? { ...candidate, status: previousStatus } : candidate)))
-        setBannerError(`Could not move "${issue.title}" to ${targetStatus === 'DONE' ? 'Closed' : targetStatus}: ${getErrorMessage(err)}`)
-      })
+    if (!issue) return
+    changeStatus(issue, targetStatus)
   }
 
   if (loading) return <BoardSkeleton />
@@ -138,17 +146,20 @@ export function IssueBoard({ filters, sort, projectsById, onOpenIssue }: IssueBo
                 }
               })
 
+              const draggable = issue.status !== 'DONE'
+
               return (
                 <IssueCard
                   key={issue.id}
                   issue={issue}
                   projectLabel={project?.title}
                   assignees={assignees}
-                  draggable={issue.status !== 'DONE'}
+                  draggable={draggable}
                   isDragging={draggingIssueId === issue.id}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                   onClick={() => onOpenIssue(issue.id)}
+                  onChangeStatus={draggable ? (targetStatus) => changeStatus(issue, targetStatus) : undefined}
                 />
               )
             })}

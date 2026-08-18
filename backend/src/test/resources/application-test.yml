@@ -10,3 +10,4 @@ spring:
 jwt:
   secret: VGhpcy1pcy1hLXNlY3JldC1rZXktdGhhdC1tdXN0LWJlLWF0LWxlYXN0LTI1Ni1iaXRzLWxvbmch
   expiration: 3600000
+  refresh-expiration: 604800000
