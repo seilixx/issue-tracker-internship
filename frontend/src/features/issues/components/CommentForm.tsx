@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { IconSend } from '@/components/icons'
+import { useToast } from '@/components/toast/useToast'
 import { getErrorMessage } from '@/utils/apiClient'
 import { createComment } from '../api'
 import styles from './CommentForm.module.css'
@@ -20,6 +21,7 @@ export function CommentForm({ issueId, parentCommentId, autoFocus, onSubmitted, 
   const [text, setText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { showToast } = useToast()
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -30,6 +32,7 @@ export function CommentForm({ issueId, parentCommentId, autoFocus, onSubmitted, 
     createComment(issueId, { title: text.trim(), parentCommentId })
       .then(() => {
         setText('')
+        showToast(parentCommentId ? 'Reply posted.' : 'Comment posted.', 'success')
         onSubmitted()
       })
       .catch((err) => setError(getErrorMessage(err, 'Could not post the comment.')))

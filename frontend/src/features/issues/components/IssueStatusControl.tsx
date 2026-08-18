@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useToast } from '@/components/toast/useToast'
 import { getErrorMessage } from '@/utils/apiClient'
 import type { Status } from '@/utils/apiTypes'
 import { useUpdateIssueStatus } from '../hooks/useUpdateIssueStatus'
@@ -20,6 +21,7 @@ interface IssueStatusControlProps {
 
 export function IssueStatusControl({ issueId, currentStatus, canChangeStatus, onChanged }: IssueStatusControlProps) {
   const { updateStatus, pendingIds } = useUpdateIssueStatus()
+  const { showToast } = useToast()
   const [error, setError] = useState<string | null>(null)
   const isPending = pendingIds.has(issueId)
 
@@ -37,7 +39,10 @@ export function IssueStatusControl({ issueId, currentStatus, canChangeStatus, on
     if (status === currentStatus || isPending) return
     setError(null)
     updateStatus(issueId, status)
-      .then(onChanged)
+      .then(() => {
+        showToast(`Status changed to ${OPTIONS.find((option) => option.status === status)?.label ?? status}.`, 'success')
+        onChanged()
+      })
       .catch((err) => setError(getErrorMessage(err, 'Could not update the status.')))
   }
 

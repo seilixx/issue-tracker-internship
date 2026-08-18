@@ -1,5 +1,6 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { IconPaperclip, IconTrash, IconUpload } from '@/components/icons'
+import { useToast } from '@/components/toast/useToast'
 import { getErrorMessage } from '@/utils/apiClient'
 import { formatBytes, formatRelativeDate } from '@/utils/format'
 import { useAuth } from '@/features/auth/useAuth'
@@ -28,6 +29,7 @@ export function IssueAttachmentsSection({
   onChanged,
 }: IssueAttachmentsSectionProps) {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -41,7 +43,10 @@ export function IssueAttachmentsSection({
     setError(null)
     setUploading(true)
     uploadAttachment(issueId, file)
-      .then(onChanged)
+      .then(() => {
+        showToast('File uploaded.', 'success')
+        onChanged()
+      })
       .catch((err) => setError(getErrorMessage(err, 'Could not upload the file.')))
       .finally(() => setUploading(false))
   }
@@ -50,7 +55,10 @@ export function IssueAttachmentsSection({
     setError(null)
     setDeletingId(attachment.id)
     deleteAttachment(attachment.id)
-      .then(onChanged)
+      .then(() => {
+        showToast('Attachment deleted.', 'success')
+        onChanged()
+      })
       .catch((err) => setError(getErrorMessage(err, 'Could not delete the attachment.')))
       .finally(() => setDeletingId(null))
   }

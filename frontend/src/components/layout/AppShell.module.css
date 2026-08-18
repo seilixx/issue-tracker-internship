@@ -34,6 +34,28 @@
   background-color: var(--color-bg);
 }
 
+.page {
+  min-height: 100%;
+  animation: pageEnter var(--transition-base) ease;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page {
+    animation: none;
+  }
+}
+
 @media (max-width: 900px) {
   .shell {
     grid-template-columns: 208px 1fr;

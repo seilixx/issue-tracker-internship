@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent } from 'react'
+import { useToast } from '@/components/toast/useToast'
 import { getErrorMessage } from '@/utils/apiClient'
 import { uploadMyAvatar } from '../api'
 import type { UserSummary } from '../types'
@@ -16,6 +17,7 @@ export function AvatarUploadControl({ avatarUrl, initials, onUploaded }: AvatarU
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { showToast } = useToast()
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -34,7 +36,10 @@ export function AvatarUploadControl({ avatarUrl, initials, onUploaded }: AvatarU
     setUploading(true)
     setError(null)
     uploadMyAvatar(blob)
-      .then(onUploaded)
+      .then((updated) => {
+        showToast('Avatar updated.', 'success')
+        onUploaded(updated)
+      })
       .catch((err) => setError(getErrorMessage(err, 'Could not upload the avatar.')))
       .finally(() => setUploading(false))
   }

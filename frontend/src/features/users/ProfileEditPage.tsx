@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { useToast } from '@/components/toast/useToast'
 import { useAuth } from '@/features/auth/useAuth'
 import { getErrorMessage } from '@/utils/apiClient'
 import { getInitials } from '@/utils/format'
@@ -14,6 +15,7 @@ export function ProfileEditPage() {
   // no separate fetch/loading state needed, and it's the single source of truth
   // this page writes back to via auth.setUser() below.
   const { user, setUser } = useAuth()
+  const { showToast } = useToast()
 
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName, setLastName] = useState(user?.lastName ?? '')
@@ -38,6 +40,7 @@ export function ProfileEditPage() {
       .then((updated) => {
         applyUpdate(updated)
         setSaved(true)
+        showToast('Profile updated.', 'success')
       })
       .catch((err) => setSaveError(getErrorMessage(err, 'Could not save your profile.')))
       .finally(() => setSaving(false))

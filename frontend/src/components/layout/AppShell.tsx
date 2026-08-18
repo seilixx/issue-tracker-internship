@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { getStoredSidebarCollapsed, setStoredSidebarCollapsed } from '@/utils/storage'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
@@ -7,6 +7,7 @@ import styles from './AppShell.module.css'
 
 export function AppShell() {
   const [collapsed, setCollapsed] = useState(getStoredSidebarCollapsed)
+  const location = useLocation()
 
   function toggleCollapsed() {
     setCollapsed((value) => {
@@ -25,7 +26,11 @@ export function AppShell() {
         <Topbar />
       </div>
       <main className={styles.main}>
-        <Outlet />
+        {/* Keyed by path so every navigation replays the page-enter animation
+            and each page mounts fresh (pages fetch their data on mount). */}
+        <div key={location.pathname} className={styles.page}>
+          <Outlet />
+        </div>
       </main>
     </div>
   )

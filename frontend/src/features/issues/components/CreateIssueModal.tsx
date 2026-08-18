@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/Button'
 import { IconX } from '@/components/icons'
+import { useToast } from '@/components/toast/useToast'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { useUserSearch } from '@/features/users/hooks/useUserSearch'
 import type { UserSummary } from '@/features/users/types'
@@ -21,6 +22,7 @@ const PRIORITY_LABELS: Record<Priority, string> = { LOW: 'Low', MEDIUM: 'Medium'
 export function CreateIssueModal({ open, onClose }: CreateIssueModalProps) {
   const navigate = useNavigate()
   const { projects } = useProjects()
+  const { showToast } = useToast()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -64,6 +66,7 @@ export function CreateIssueModal({ open, onClose }: CreateIssueModalProps) {
       assignedUuids: assignees.map((assignee) => assignee.uuid),
     })
       .then((issue) => {
+        showToast('Issue created.', 'success')
         resetAndClose()
         navigate(`/projects/${issue.projectId}`)
       })
