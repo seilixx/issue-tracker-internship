@@ -20,10 +20,25 @@ export function GlobalSearch() {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
 
   const { projects } = useProjects()
   const { results: users, loading: usersLoading } = useUserSearch(query)
+
+  // Ctrl/Cmd+K focuses the search from anywhere in the app (standard
+  // "command palette" shortcut in this kind of tool).
+  useEffect(() => {
+    function handleGlobalKeyDown(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        inputRef.current?.focus()
+        setOpen(true)
+      }
+    }
+    document.addEventListener('keydown', handleGlobalKeyDown)
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
 
   const trimmed = query.trim()
   const matchedProjects = useMemo(() => {
@@ -68,12 +83,14 @@ export function GlobalSearch() {
           className={styles.input}
           placeholder="Search"
           value={query}
+          ref={inputRef}
           onChange={(event) => {
             setQuery(event.target.value)
             setOpen(true)
           }}
           onFocus={() => setOpen(true)}
         />
+        <kbd className={styles.hint}>Ctrl K</kbd>
       </div>
 
       {showDropdown ? (

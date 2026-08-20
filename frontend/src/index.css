@@ -238,3 +238,26 @@ code {
   border-radius: var(--radius-sm);
   padding: 0.1em 0.4em;
 }
+
+/* Global keyboard-focus indicator — mouse users never see it, keyboard
+   users always do. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* Smooth theme switch on every surface, not just body. */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color;
+  transition-duration: var(--transition-fast);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms;
+  }
+}

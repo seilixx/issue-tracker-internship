@@ -52,6 +52,10 @@
   vertical-align: middle;
 }
 
+.table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
 .table tbody tr:hover {
   background-color: var(--color-surface);
 }
