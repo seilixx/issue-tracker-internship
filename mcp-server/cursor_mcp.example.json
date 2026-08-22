@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "issue-tracker": {
+      "command": "node",
+      "args": ["C:\\Users\\mohai\\Downloads\\issue-tracker-internship-beta\\mcp-server\\dist\\index.js"],
+      "env": {
+        "ISSUE_TRACKER_API_URL": "http://localhost:8080/api",
+        "ISSUE_TRACKER_USERNAME": "claude.bot",
+        "ISSUE_TRACKER_PASSWORD": "password123"
+      }
+    }
+  }
+}
