@@ -1,71 +1,50 @@
-import { createBrowserRouter, Outlet } from 'react-router-dom'
-import { AppShell } from '@/components/layout/AppShell'
-import { ToastProvider } from '@/components/toast/ToastProvider'
-import { MainPlaceholder } from '@/components/layout/MainPlaceholder'
-import { AuthProvider } from '@/features/auth/AuthProvider'
-import { LoginPage } from '@/features/auth/LoginPage'
-import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
-import { RegisterPage } from '@/features/auth/RegisterPage'
-import { DashboardPage } from '@/features/dashboard/DashboardPage'
-import { ProjectBoardPage } from '@/features/projects/ProjectBoardPage'
-import { ProfileEditPage } from '@/features/users/ProfileEditPage'
-import { ProfilePage } from '@/features/users/ProfilePage'
-import { UserSearchPage } from '@/features/users/UserSearchPage'
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
+import { StoreProvider } from '@/store/AppStore'
+import {
+  AuthRoute,
+  BoardRoute,
+  DashboardRoute,
+  LegacyProfileRedirect,
+  NotFound,
+  ProjectRoute,
+  Shell,
+  UserProfileRoute,
+} from '@/App'
+import { TeamPage } from '@/pages/TeamPage'
+import { MyProfilePage } from '@/pages/Profiles'
+import { AdminUsersPage } from '@/pages/AdminUsers'
 
 export const router = createBrowserRouter([
   {
-    // Pathless layout route: AuthProvider needs router context (useNavigate) to
-    // handle logout/session-expiry, so it has to live inside the router tree
-    // rather than wrapping <RouterProvider> from the outside.
+    // Pathless layout route: StoreProvider needs router context (useNavigate)
+    // for logout/session-expiry redirects, so it lives inside the router tree.
     element: (
-      <AuthProvider>
+      <StoreProvider>
         <Outlet />
-      </AuthProvider>
+      </StoreProvider>
     ),
     children: [
-      { path: '/login', element: <LoginPage /> },
-      { path: '/register', element: <RegisterPage /> },
+      { path: '/login', element: <AuthRoute view="login" /> },
+      { path: '/register', element: <AuthRoute view="register" /> },
       {
-        element: <ProtectedRoute />,
+        // Authenticated shell — redirects to /login when there is no session.
+        element: <Shell />,
         children: [
-          {
-            path: '/',
-            // ToastProvider wraps the whole authenticated shell so the sidebar,
-            // topbar and every page can fire feedback toasts.
-            element: (
-              <ToastProvider>
-                <AppShell />
-              </ToastProvider>
-            ),
-            children: [
-              {
-                index: true,
-                element: <DashboardPage />,
-              },
-              {
-                path: 'projects/:projectId',
-                element: <ProjectBoardPage />,
-              },
-              {
-                path: 'profile/edit',
-                element: <ProfileEditPage />,
-              },
-              {
-                path: 'profile/:uuid',
-                element: <ProfilePage />,
-              },
-              {
-                path: 'users/search',
-                element: <UserSearchPage />,
-              },
-              {
-                path: '*',
-                element: (
-                  <MainPlaceholder title="Not found" description="This page doesn't exist." />
-                ),
-              },
-            ],
-          },
+          // Legacy bookmarks: the dashboard used to live at "/".
+          { index: true, element: <Navigate to="/dashboard" replace /> },
+          { path: 'dashboard', element: <DashboardRoute /> },
+          { path: 'board', element: <BoardRoute /> },
+          { path: 'projects/:projectId', element: <ProjectRoute /> },
+          { path: 'team', element: <TeamPage /> },
+          { path: 'profile', element: <MyProfilePage /> },
+          { path: 'users/:uuid', element: <UserProfileRoute /> },
+          { path: 'admin/users', element: <AdminUsersPage /> },
+          // Legacy paths from the previous UI — kept as redirects so old
+          // bookmarks and links keep working.
+          { path: 'users/search', element: <Navigate to="/team" replace /> },
+          { path: 'profile/edit', element: <Navigate to="/profile" replace /> },
+          { path: 'profile/:uuid', element: <LegacyProfileRedirect /> },
+          { path: '*', element: <NotFound /> },
         ],
       },
     ],

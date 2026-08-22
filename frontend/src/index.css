@@ -1,263 +1,88 @@
-/* ==========================================================================
-   Design tokens
-   Light palette lives on :root; dark palette overrides under [data-theme='dark'].
-   The active theme is resolved to an explicit "light"/"dark" value before
-   first paint (see index.html inline script + ThemeProvider), so there is no
-   third "system" state to encode here in CSS.
-   ========================================================================== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  /* Brand accent — Ooredoo red */
-  --color-accent: #e30613;
-  --color-accent-hover: #c00510;
-  --color-accent-active: #a3040d;
-  --color-accent-contrast: #ffffff;
-  --color-accent-soft: #fce6e7;
-
-  /* Neutrals */
-  --color-bg: #ffffff;
-  --color-surface: #f7f7f8;
-  --color-surface-raised: #ffffff;
-  --color-border: #e4e4e7;
-  --color-border-strong: #d4d4d8;
-  --color-text-primary: #18181b;
-  --color-text-secondary: #52525b;
-  --color-text-muted: #8a8a93;
-  --color-overlay: rgb(24 24 27 / 40%);
-
-  /* Radius */
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-full: 999px;
-
-  /* Soft shadows */
-  --shadow-sm: 0 1px 2px rgb(24 24 27 / 6%);
-  --shadow-md: 0 4px 16px rgb(24 24 27 / 8%);
-  --shadow-lg: 0 12px 32px rgb(24 24 27 / 12%);
-
-  /* Spacing scale */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --space-12: 48px;
-
-  /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.8125rem;
-  --font-size-base: 0.9375rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.375rem;
-  --font-size-2xl: 1.75rem;
-  --font-size-3xl: 2.25rem;
-  --line-height-tight: 1.2;
-  --line-height-normal: 1.5;
-  --font-weight-regular: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-
-  /* Motion */
-  --transition-fast: 120ms ease;
-  --transition-base: 200ms ease;
-
-  /* Code blocks (issue description fenced code) — fixed dark values, not
-     overridden under [data-theme='dark'] below: a code block reads as dark
-     regardless of the app's theme, same convention as most code viewers. */
-  --color-code-bg: #1e1e1e;
-  --color-code-text: #e5e5e5;
-  --color-code-border: #2f2f2f;
-
-  /* Status semantics — grey = Open, blue = In Progress, green = Closed/Done */
-  --color-status-open: #9ca3af;
-  --color-status-in-progress: #3b82f6;
-  --color-status-done: #22c55e;
-
-  /* Priority semantics — critical reuses the brand accent */
-  --color-priority-low: #3b82f6;
-  --color-priority-medium: #f59e0b;
-  --color-priority-high: #fb923c;
-
-  /* Generic tone system — used by the new Badge/StatCard primitives (see
-     components/Badge.tsx). Deliberately separate from the status/priority
-     tokens above: those are tied to the Status/Priority enums and drive the
-     existing StatusBadge/PriorityIcon components used on live pages, while
-     these are a general-purpose palette a caller picks by *tone*, not by
-     business meaning — the mapping from "this issue is CRITICAL" to "use
-     the danger tone" happens where a page actually renders one, not here. */
-  --color-tone-danger: var(--color-accent);
-  --color-tone-danger-contrast: var(--color-accent-contrast);
-  --color-tone-warning: #f97316;
-  --color-tone-warning-contrast: #ffffff;
-  --color-tone-info: #2563eb;
-  --color-tone-info-contrast: #ffffff;
-  --color-tone-success: #16a34a;
-  --color-tone-success-contrast: #ffffff;
-  --color-tone-neutral: var(--color-surface);
-  --color-tone-neutral-contrast: var(--color-text-secondary);
-
-  /* Priority donut chart palette (dataviz skill: docs/AUDIT_REPORT.md-style
-     validated tokens, not eyeballed). Deliberately its own set, not a reuse
-     of --color-priority-* / --color-accent above: those were tuned for small
-     UI elements (icons, badge text) on their respective surface, and running
-     them through the palette validator as 4 adjacent large fill segments
-     failed hard — worst case here was medium/high (#f59e0b/#fb923c) at
-     CVD ΔE 2.3 and normal-vision ΔE 4.2, both far under the 8/15 gates.
-     Validated with `node scripts/validate_palette.js` from the dataviz
-     skill against this app's actual card surface (light #ffffff / dark
-     #222225), order LOW→MEDIUM→HIGH→CRITICAL, adjacent-pairs mode (fixed
-     ring order, not a scatter/small-multiples context). */
-  --chart-priority-low: #3b82f6;
-  --chart-priority-medium: #0d9488;
-  --chart-priority-high: #fb923c;
-  --chart-priority-critical: #e30613;
-}
-
-[data-theme='dark'] {
-  /* Accent brightened slightly for AA contrast on dark surfaces */
-  --color-accent: #ff4d5a;
-  --color-accent-hover: #ff6e78;
-  --color-accent-active: #ff8891;
-  --color-accent-contrast: #ffffff;
-  --color-accent-soft: #3a1620;
-
-  /* Neutrals — deep charcoal, never pure black */
-  --color-bg: #121214;
-  --color-surface: #1b1b1e;
-  --color-surface-raised: #222225;
-  --color-border: #2e2e32;
-  --color-border-strong: #3a3a3f;
-  --color-text-primary: #f4f4f5;
-  --color-text-secondary: #a8a8b0;
-  --color-text-muted: #75757d;
-  --color-overlay: rgb(0 0 0 / 55%);
-
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
-  --shadow-md: 0 4px 16px rgb(0 0 0 / 35%);
-  --shadow-lg: 0 12px 32px rgb(0 0 0 / 45%);
-
-  --color-status-open: #a1a1aa;
-  --color-status-in-progress: #60a5fa;
-  --color-status-done: #4ade80;
-
-  --color-priority-low: #7dd3fc;
-  --color-priority-medium: #fbbf24;
-  --color-priority-high: #fdba74;
-
-  /* Tone fills stay saturated (not lightened like the tokens above) because
-     they're solid pill backgrounds with white text, not a color read
-     against the page background — a paler tone here would break contrast
-     with its own text instead of helping it. */
-  --color-tone-warning: #ea580c;
-  --color-tone-info: #1d4ed8;
-  --color-tone-success: #15803d;
-  --color-tone-neutral: var(--color-surface);
-  --color-tone-neutral-contrast: var(--color-text-secondary);
-
-  /* Re-stepped for the dark card surface (#222225): the light-mode high/critical
-     fills sat outside the validator's dark lightness band (L 0.48-0.67) and,
-     once corrected, the light-mode critical red collided with high (CVD ΔE 4.5).
-     --color-accent's own dark value (#ff4d5a) was tried first and rejected for
-     the same reason — it's tuned for small bright UI elements, not a large
-     adjacent fill next to amber. low/medium carry over unchanged: both already
-     sit inside the dark band at the light-mode hex. */
-  --chart-priority-high: #c2870a;
-  --chart-priority-critical: #dc2626;
-}
-
-/* ==========================================================================
-   Base reset
-   ========================================================================== */
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  background-color: var(--color-bg);
-  color: var(--color-text-primary);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-normal);
-  -webkit-font-smoothing: antialiased;
-  transition: background-color var(--transition-base), color var(--transition-base);
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  margin: 0;
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-}
-
-h1 {
-  font-size: var(--font-size-3xl);
-}
-h2 {
-  font-size: var(--font-size-2xl);
-}
-h3 {
-  font-size: var(--font-size-xl);
-}
-
-p {
-  margin: 0;
-}
-
-a {
-  color: inherit;
-}
-
-button {
-  font-family: inherit;
-}
-
-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  background-color: var(--color-surface);
-  border-radius: var(--radius-sm);
-  padding: 0.1em 0.4em;
-}
-
-/* Global keyboard-focus indicator — mouse users never see it, keyboard
-   users always do. */
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-}
-
-/* Smooth theme switch on every surface, not just body. */
-*,
-*::before,
-*::after {
-  transition-property: background-color, border-color;
-  transition-duration: var(--transition-fast);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0ms;
+@layer base {
+  :root {
+    --background: 220 23% 97%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 356 100% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 95%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 356 100% 97%;
+    --accent-foreground: 356 90% 36%;
+    --destructive: 356 90% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 356 100% 45%;
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-primary: 356 100% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 95%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 356 100% 45%;
   }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+@layer base {
+  html {
+    font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(220 13% 85%); border-radius: 999px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .kanban-col-drop { background: hsl(356 100% 97%); outline: 2px dashed hsl(356 100% 80%); outline-offset: -6px; }
 }

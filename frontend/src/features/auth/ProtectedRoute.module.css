@@ -1,9 +1,0 @@
-.loading {
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--color-bg);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-}
